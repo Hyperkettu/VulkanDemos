@@ -1,3 +1,9 @@
 *.dll
 
 .vs/
+
+ComputeShader/ComputeShader/x64/
+ComputeShader/x64/
+ComputeShader/x64/
+
+HelloModel/x64/
