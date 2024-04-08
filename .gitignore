@@ -7,3 +7,19 @@ ComputeShader/x64/
 ComputeShader/x64/
 
 HelloModel/x64/
+
+RaytracingInOneWeekend/
+
+*.tlog
+*.log
+*.ppm
+*.pdb
+*.obj
+*.iobj
+*.ipdb
+*.recipe
+*.pch
+*.ilk
+
+FoxEngine/x64/
+FoxEngine/FoxEngine/x64/
