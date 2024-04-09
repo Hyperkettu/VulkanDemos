@@ -4,21 +4,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <STB_Image/stb_image.h>
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <TinyObjLoader/tiny_obj_loader.h>
-
 const std::string MODEL_PATH = "models/viking.obj";
 const std::string TEXTURE_PATH = "textures/viking.png";
 
-namespace std {
-    template<> struct hash<Fox::Vulkan::Vertex> {
-        size_t operator()(Fox::Vulkan::Vertex const& vertex) const {
-            return ((hash<glm::vec3>()(vertex.pos) ^
-                (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-                (hash<glm::vec2>()(vertex.texCoord) << 1);
-        }
-    };
-}
+
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -334,7 +323,6 @@ private:
         createTextureImageView();
         createTextureSampler();
         loadModel();
-        createMeshes();
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
@@ -343,44 +331,8 @@ private:
     }
 
     void loadModel() {
-        tinyobj::attrib_t attrib;
-        std::vector<tinyobj::shape_t> shapes;
-        std::vector<tinyobj::material_t> materials;
-        std::string warn, err;
-
-        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
-            throw std::runtime_error(warn + err);
-        }
-
-        std::unordered_map<Fox::Vulkan::Vertex, uint32_t> uniqueVertices{};
-
-        for (const auto& shape : shapes) {
-            for (const auto& index : shape.mesh.indices) {
-                Fox::Vulkan::Vertex vertex{};
-
-                vertex.pos = {
-                    attrib.vertices[3 * index.vertex_index + 0],
-                    attrib.vertices[3 * index.vertex_index + 1],
-                    attrib.vertices[3 * index.vertex_index + 2]
-                };
-
-                vertex.texCoord = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
-                     1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-                };
-
-                vertex.color = { 1.0f, 1.0f, 1.0f };
-
-                if (uniqueVertices.count(vertex) == 0) {
-                    uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-                    vertices.push_back(vertex);
-                }
-
-                indices.push_back(uniqueVertices[vertex]);            
-            }
-
-        }
-
+        model = std::make_shared<Fox::Vulkan::Model>();
+        model->load(MODEL_PATH);
     }
 
     void createDepthResources() {
@@ -726,10 +678,6 @@ private:
         }
     }
 
-    void createMeshes() {
-        mesh = std::make_shared<Fox::Vulkan::Mesh>(vertices, indices);
-    }
-
     void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -866,15 +814,15 @@ private:
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = { mesh->GetVertices()->GetBuffer() };
+        VkBuffer vertexBuffers[] = { model->GetVertexBuffer() };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdBindIndexBuffer(commandBuffer, mesh->GetIndices()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(commandBuffer, model->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, 
             &descriptorSets[currentFrame], 0, nullptr);
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh->GetIndexCount()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model->GetIndexCount()), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -1653,9 +1601,9 @@ private:
     void cleanup() {
 
         VkDevice device = Fox::Vulkan::Renderer::GetDevice();
+        model->~Model();
+        model = nullptr;
 
-        mesh->~IndexedMesh();
-        mesh = nullptr;
         renderer->DeleteBuffers();
 
         cleanupSwapChain();
@@ -1730,10 +1678,8 @@ protected:
     VkDeviceMemory colorImageMemory;
     VkImageView colorImageView;
 
-    std::vector<Fox::Vulkan::Vertex> vertices;
-    std::vector<uint32_t> indices;
+    std::shared_ptr<Fox::Vulkan::Model> model;
 
-    std::shared_ptr<Fox::Vulkan::Mesh> mesh;
 
     uint32_t mipLevels;
     VkImage textureImage;
