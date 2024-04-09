@@ -13,14 +13,14 @@ namespace Fox {
 		    ~Buffer();
 
 			void Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
-
 			void CopyImage(VkDeviceSize imageSize, unsigned char* pixels);
-
 			void CopyData(std::vector<T>& data, VkDeviceSize size);
-
 			void Map();
-
 			void Update(T& data);
+            void SetContents(const std::vector<T>& content, bool sendToGPU = true);
+            size_t GetElementCount() const {
+                return content.size();
+            }
 
 			VkBuffer GetBuffer() {
 				return buffer;
@@ -31,6 +31,7 @@ namespace Fox {
 			VkDeviceMemory bufferMemory;
 			VkDeviceSize size;
 
+            std::vector<T> content;
 			void* mappedMemory;
 		};
 
@@ -100,5 +101,17 @@ namespace Fox {
         void Buffer<T>::Update(T& data) {
             memcpy(mappedMemory, &data, sizeof(data));
         }
+
+        template<class T>
+        void Buffer<T>::SetContents(const std::vector<T>& contents, bool sendToGPU) {
+            content.resize(contents.size());
+            std::copy(contents.begin(), contents.end(), content.begin());
+            size = sizeof(T) * content.size();
+            if (sendToGPU) {
+                CopyData(content, size);
+            }
+
+        }
+
 	}
 }

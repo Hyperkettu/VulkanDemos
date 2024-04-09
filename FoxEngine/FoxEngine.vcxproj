@@ -152,6 +152,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="graphics\Buffer.cpp" />
+    <ClCompile Include="graphics\Mesh.cpp" />
+    <ClCompile Include="graphics\Model.cpp" />
     <ClCompile Include="graphics\Renderer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
@@ -163,10 +165,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="graphics\Buffer.h" />
+    <ClInclude Include="graphics\Mesh.h" />
+    <ClInclude Include="graphics\Model.h" />
     <ClInclude Include="graphics\Renderer.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
-
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

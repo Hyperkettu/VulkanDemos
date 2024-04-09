@@ -96,7 +96,7 @@ private:
     void createInstance() {
         VkApplicationInfo applicationInfo = {};
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        applicationInfo.pApplicationName = "Hello Triangle";
+        applicationInfo.pApplicationName = "Fox Engine";
         applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         applicationInfo.pEngineName = "No Engine";
         applicationInfo.apiVersion = VK_API_VERSION_1_0;
@@ -334,8 +334,7 @@ private:
         createTextureImageView();
         createTextureSampler();
         loadModel();
-        createVertexBuffer();
-        createIndexBuffer();
+        createMeshes();
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
@@ -657,7 +656,7 @@ private:
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
+        allocInfo.commandPool = renderer->commandPool;
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
@@ -683,10 +682,10 @@ private:
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
 
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
+        vkQueueSubmit(renderer->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(renderer->graphicsQueue);
 
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(device, renderer->commandPool, 1, &commandBuffer);
     }
 
     void createUniformBuffers() {
@@ -708,9 +707,7 @@ private:
     }
 
     void createDescriptorPool() {
-
         VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
 
         std::array<VkDescriptorPoolSize, 2> poolSizes{};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -729,48 +726,8 @@ private:
         }
     }
 
-    void createIndexBuffer() {
-        VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
-
-        VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
-
-        Fox::Vulkan::Buffer<uint32_t> stagingBuffer;
-        stagingBuffer.Create(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        stagingBuffer.CopyData(indices, bufferSize);
-
-        renderer->indexBuffer = new Fox::Vulkan::Buffer<uint32_t>();
-        renderer->indexBuffer->Create(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-        copyBuffer(stagingBuffer.GetBuffer(), renderer->indexBuffer->GetBuffer(), bufferSize);
-    }
-
-    void createVertexBuffer() {
-        VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-        Fox::Vulkan::Buffer<Fox::Vulkan::Vertex> stagingBuffer;
-
-        stagingBuffer.Create(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-        stagingBuffer.CopyData(vertices, bufferSize);
-
-        renderer->vertexBuffer = new Fox::Vulkan::Buffer<Fox::Vulkan::Vertex>();
-        renderer->vertexBuffer->Create(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        copyBuffer(stagingBuffer.GetBuffer(), renderer->vertexBuffer->GetBuffer(), bufferSize);
-
-    }
-
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-        VkBufferCopy copyRegion{};
-        copyRegion.srcOffset = 0; // Optional
-        copyRegion.dstOffset = 0; // Optional
-        copyRegion.size = size;
-        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-        
-        endSingleTimeCommands(commandBuffer);
+    void createMeshes() {
+        mesh = std::make_shared<Fox::Vulkan::Mesh>(vertices, indices);
     }
 
     void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
@@ -909,15 +866,15 @@ private:
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = { renderer->vertexBuffer->GetBuffer() };
+        VkBuffer vertexBuffers[] = { mesh->GetVertices()->GetBuffer() };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdBindIndexBuffer(commandBuffer, renderer->indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(commandBuffer, mesh->GetIndices()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, 
             &descriptorSets[currentFrame], 0, nullptr);
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh->GetIndexCount()), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -934,7 +891,7 @@ private:
 
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = commandPool;
+        allocInfo.commandPool = renderer->commandPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
 
@@ -953,7 +910,7 @@ private:
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 
-        if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+        if (vkCreateCommandPool(device, &poolInfo, nullptr, &renderer->commandPool) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create command pool!");
         }
     }
@@ -1257,7 +1214,7 @@ private:
         vkDestroyImageView(device, colorImageView, nullptr);
         vkDestroyImage(device, colorImage, nullptr);
         vkFreeMemory(device, colorImageMemory, nullptr);
-
+        
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthImageMemory, nullptr);
@@ -1411,7 +1368,7 @@ private:
 
         VkDevice device = Fox::Vulkan::Renderer::GetDevice();
 
-        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &renderer->graphicsQueue);
         vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &presentQueue);
     }
 
@@ -1600,7 +1557,6 @@ private:
 
         renderer->uniformBuffers[currentImage]->Update(ubo);
 
-     //   memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
 
     void drawFrame() {
@@ -1640,7 +1596,7 @@ private:
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+        if (vkQueueSubmit(renderer->graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
             throw std::runtime_error("Failed to submit draw command buffer!");
         }
 
@@ -1698,6 +1654,8 @@ private:
 
         VkDevice device = Fox::Vulkan::Renderer::GetDevice();
 
+        mesh->~IndexedMesh();
+        mesh = nullptr;
         renderer->DeleteBuffers();
 
         cleanupSwapChain();
@@ -1717,7 +1675,7 @@ private:
             vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
             vkDestroyFence(device, inFlightFences[i], nullptr);
         }
-        vkDestroyCommandPool(device, commandPool, nullptr);
+        vkDestroyCommandPool(device, renderer->commandPool, nullptr);
 
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -1746,7 +1704,6 @@ protected:
     SDL_Window* window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
-    VkQueue graphicsQueue;
     VkSurfaceKHR surface;
     VkQueue presentQueue;
     VkSwapchainKHR swapChain;
@@ -1761,7 +1718,6 @@ protected:
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
     std::vector<VkFramebuffer> swapChainFramebuffers;
-    VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers; // cleaned with pool automatically
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -1776,6 +1732,8 @@ protected:
 
     std::vector<Fox::Vulkan::Vertex> vertices;
     std::vector<uint32_t> indices;
+
+    std::shared_ptr<Fox::Vulkan::Mesh> mesh;
 
     uint32_t mipLevels;
     VkImage textureImage;

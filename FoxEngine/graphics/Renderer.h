@@ -38,9 +38,14 @@ namespace Fox {
 					throw std::runtime_error("Failed to find suitable memory type!");
 				}
 
+				void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+				VkCommandBuffer beginSingleTimeCommands();
+				void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+
 				void DeleteBuffers() {
-					delete vertexBuffer;
-					delete indexBuffer;
+		//			delete vertexBuffer;
+		//			delete indexBuffer;
 
 					for (size_t i = 0u; i < uniformBuffers.size(); i++) {
 						delete uniformBuffers[i];
@@ -51,13 +56,16 @@ namespace Fox {
 
 				static Renderer* instance;
 
-				Fox::Vulkan::Buffer<Vertex>* vertexBuffer;
-				Fox::Vulkan::Buffer<uint32_t>* indexBuffer;
+
 
 				VkDevice device;
 				VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
-				std::vector<Fox::Vulkan::Buffer<UniformBufferObject>*> uniformBuffers;
+	//		Fox::Vulkan::Buffer<Vertex>* vertexBuffer;
+	//		Fox::Vulkan::Buffer<uint32_t>* indexBuffer;
+			std::vector<Fox::Vulkan::Buffer<UniformBufferObject>*> uniformBuffers;
+			VkCommandPool commandPool;
+			VkQueue graphicsQueue;
 		};
 	}
 }
