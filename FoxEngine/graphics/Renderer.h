@@ -116,7 +116,6 @@ namespace Fox {
 				bool HasStencilComponent(VkFormat format);
 
 				void CreateTextureSampler();
-				void CreateTextureImageView(); 
 
 				void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 

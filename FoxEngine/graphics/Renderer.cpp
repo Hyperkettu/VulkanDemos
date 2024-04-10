@@ -19,22 +19,6 @@ namespace Fox {
             model->Load(MODEL_PATH);
         }
 
-        static std::vector<char> readFile(const std::string& fileName) {
-            std::ifstream file(fileName, std::ios::ate | std::ios::binary);
-
-            if (!file.is_open()) {
-                throw std::runtime_error("Failed to open file!");
-            }
-
-            size_t fileSize = (size_t)file.tellg();
-            std::vector<char> buffer(fileSize);
-            file.seekg(0);
-            file.read(buffer.data(), fileSize);
-            file.close();
-
-            return buffer;
-        }
-
         void Renderer::CreateSDL2Surface(SDL_Window* window) {
             if (!SDL_Vulkan_CreateSurface(window, instance, &surface)) {
                 throw std::runtime_error("Failed to create window surface.");
@@ -64,7 +48,6 @@ namespace Fox {
             swapchain->CreateDepthResources();
             swapchain->CreateFrameBuffers(renderPass);
             CreateTextureImage();
-            CreateTextureImageView();
             CreateTextureSampler();
             LoadModel();
             CreateUniformBuffers();
@@ -393,8 +376,8 @@ namespace Fox {
             VkDevice device = Fox::Vulkan::Renderer::GetDevice();
 
 
-            auto vertShaderCode = readFile("shaders/vert.spv");
-            auto fragShaderCode = readFile("shaders/frag.spv");
+            auto vertShaderCode = Fox::Core::FileSystem::readBinaryFile("shaders/vert.spv");
+            auto fragShaderCode = Fox::Core::FileSystem::readBinaryFile("shaders/frag.spv");
 
             VkShaderModule vertexShaderModule = CreateShaderModule(vertShaderCode);
             VkShaderModule fragmentShaderModule = CreateShaderModule(fragShaderCode);
@@ -767,16 +750,6 @@ namespace Fox {
             vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &presentQueue);
         }
 
-        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
-            for (const auto& availableFormat : availableFormats) {
-                if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                    return availableFormat;
-                }
-            }
-
-            return availableFormats[0];
-        }
-
         void Renderer::PickPhysicalDevice() {
             uint32_t deviceCount = 0;
             vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -924,12 +897,6 @@ namespace Fox {
             TransitionImageLayout(texture->GetImage(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
             CopyBufferToImage(stagingBuffer.GetBuffer(), texture->GetImage(), static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
             GenerateMipmaps(texture->GetImage(), VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
-        }
-
-       
-
-        void Renderer::CreateTextureImageView() {
-         //   textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
         }
 
         void Renderer::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
