@@ -56,7 +56,6 @@ namespace Fox {
             PickPhysicalDevice();
             CreateLogicalDevice();
             swapchain->Create();
-            swapchain->CreateImageViews();
             CreateRenderPass();
             CreateDescriptorSetLayout();
             CreateGraphicsPipeline();
@@ -81,12 +80,9 @@ namespace Fox {
 
             DeleteBuffers();
             swapchain->Cleanup();
-
-            vkDestroyImage(device, textureImage, nullptr);
-            vkFreeMemory(device, textureImageMemory, nullptr);
+            texture = nullptr;
 
             vkDestroySampler(device, textureSampler, nullptr);
-            vkDestroyImageView(device, textureImageView, nullptr);
 
             vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
@@ -921,56 +917,19 @@ namespace Fox {
 
             stbi_image_free(pixels);
 
-            CreateImage(texWidth, texHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB,
+            texture = std::make_shared<Fox::Vulkan::Texture>(texWidth, texHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB,
                 VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
 
-            TransitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
-            CopyBufferToImage(stagingBuffer.GetBuffer(), textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-            GenerateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
+            TransitionImageLayout(texture->GetImage(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+            CopyBufferToImage(stagingBuffer.GetBuffer(), texture->GetImage(), static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+            GenerateMipmaps(texture->GetImage(), VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
         }
 
-        void Renderer::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-            VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
-
-            VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
-            VkImageCreateInfo imageInfo{};
-            imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            imageInfo.imageType = VK_IMAGE_TYPE_2D;
-            imageInfo.extent.width = width;
-            imageInfo.extent.height = height;
-            imageInfo.extent.depth = 1;
-            imageInfo.mipLevels = mipLevels;
-            imageInfo.arrayLayers = 1;
-            imageInfo.format = format;
-            imageInfo.tiling = tiling;
-            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            imageInfo.usage = usage;
-            imageInfo.samples = numSamples;
-            imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-            if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create image!");
-            }
-
-            VkMemoryRequirements memRequirements;
-            vkGetImageMemoryRequirements(device, image, &memRequirements);
-
-            VkMemoryAllocateInfo allocInfo{};
-            allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            allocInfo.allocationSize = memRequirements.size;
-            allocInfo.memoryTypeIndex = Fox::Vulkan::Renderer::GetRenderer()->findMemoryType(memRequirements.memoryTypeBits, properties);
-
-            if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
-                throw std::runtime_error("failed to allocate image memory!");
-            }
-
-            vkBindImageMemory(device, image, imageMemory, 0);
-        }
+       
 
         void Renderer::CreateTextureImageView() {
-            textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
+         //   textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
         }
 
         void Renderer::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
@@ -1057,30 +1016,6 @@ namespace Fox {
                 1, &barrier);
 
             EndSingleTimeCommands(commandBuffer);
-        }
-
-        VkImageView Renderer::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) {
-
-            VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
-
-            VkImageViewCreateInfo viewInfo{};
-            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.image = image;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format = format;
-            viewInfo.subresourceRange.aspectMask = aspectFlags;
-            viewInfo.subresourceRange.baseMipLevel = 0;
-            viewInfo.subresourceRange.levelCount = mipLevels;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount = 1;
-
-            VkImageView imageView;
-            if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create texture image view!");
-            }
-
-            return imageView;
         }
 
         void Renderer::CreateVulkanInstance() {
@@ -1273,7 +1208,7 @@ namespace Fox {
 
                 VkDescriptorImageInfo imageInfo{};
                 imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                imageInfo.imageView = textureImageView;
+                imageInfo.imageView = texture->GetImageView();
                 imageInfo.sampler = textureSampler;
 
                 std::array<VkWriteDescriptorSet, 2> descriptorWrites{};

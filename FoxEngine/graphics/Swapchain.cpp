@@ -42,21 +42,13 @@ namespace Fox {
 
     void Swapchain::Cleanup() {
         VkDevice device = Fox::Vulkan::Renderer::GetDevice();
+        renderTexture = nullptr;
+        depthTexture = nullptr;
 
-        vkDestroyImageView(device, colorImageView, nullptr);
-        vkDestroyImage(device, colorImage, nullptr);
-        vkFreeMemory(device, colorImageMemory, nullptr);
+        for (size_t i = 0; i < textures.size(); i++) {
+            vkDestroyFramebuffer(device, *textures[i]->GetFramebuffer(), nullptr);
+            vkDestroyImageView(device, textures[i]->GetImageView(), nullptr);
 
-        vkDestroyImageView(device, depthImageView, nullptr);
-        vkDestroyImage(device, depthImage, nullptr);
-        vkFreeMemory(device, depthImageMemory, nullptr);
-
-        for (size_t i = 0; i < framebuffers.size(); i++) {
-            vkDestroyFramebuffer(device, framebuffers[i], nullptr);
-        }
-
-        for (size_t i = 0; i < imageViews.size(); i++) {
-            vkDestroyImageView(device, imageViews[i], nullptr);
         }
 
         vkDestroySwapchainKHR(device, swapChain, nullptr);
@@ -70,19 +62,9 @@ namespace Fox {
         Cleanup();
 
         Create();
-        CreateImageViews();
         CreateColorResources();
         CreateDepthResources();
         CreateFrameBuffers(renderPass);
-    }
-
-    void Swapchain::CreateImageViews() {
-        Fox::Vulkan::Renderer* renderer = Fox::Vulkan::Renderer::GetRenderer();
-        imageViews.resize(images.size());
-
-        for (size_t i = 0; i < images.size(); i++) {
-            imageViews[i] = renderer->CreateImageView(images[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-        }
     }
 
     VkExtent2D Swapchain::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
@@ -119,8 +101,8 @@ namespace Fox {
         Fox::Vulkan::Renderer* renderer = Fox::Vulkan::Renderer::GetRenderer();
         VkFormat colorFormat = imageFormat;
 
-        renderer->CreateImage(extent.width, extent.height, 1, renderer->GetConfig().msaaSamples, colorFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage, colorImageMemory);
-        colorImageView = renderer->CreateImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+        renderTexture = std::make_shared<Fox::Vulkan::RenderTexture>(extent.width, extent.height, 1, renderer->GetConfig().msaaSamples, colorFormat, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 
     void Swapchain::Create() {
@@ -173,8 +155,15 @@ namespace Fox {
         }
 
         vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+
+        std::vector<VkImage> images;
         images.resize(imageCount);
         vkGetSwapchainImagesKHR(device, swapChain, &imageCount, images.data());
+
+        textures.resize(imageCount);
+        for (size_t i = 0; i < imageCount; i++) {
+            textures[i] = std::make_unique<Fox::Vulkan::SwapchainTexture>(images[i],surfaceFormat.format);
+        }
 
         imageFormat = surfaceFormat.format;
         this->extent = extent;
@@ -183,23 +172,18 @@ namespace Fox {
     void Swapchain::CreateDepthResources() {
         Fox::Vulkan::Renderer* renderer = Fox::Vulkan::Renderer::GetRenderer();
         VkFormat depthFormat = renderer->FindDepthFormat();
-        renderer->CreateImage(extent.width, extent.height, 1, renderer->GetConfig().msaaSamples, depthFormat,
-            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-        depthImageView = renderer->CreateImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
-
-        renderer->TransitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED,
+        depthTexture = std::make_shared<Fox::Vulkan::DepthTexture>(extent.width, extent.height, 1,
+            renderer->GetConfig().msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
+        renderer->TransitionImageLayout(depthTexture->GetImage(), depthFormat, VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1);
     }
 
     void Swapchain::CreateFrameBuffers(VkRenderPass renderPass) {
         VkDevice device = Fox::Vulkan::Renderer::GetDevice();
 
-        framebuffers.resize(imageViews.size());
+        for (size_t i = 0; i < textures.size(); i++) {
 
-        for (size_t i = 0; i < imageViews.size(); i++) {
-
-            std::array<VkImageView, 3> attachments = { colorImageView, depthImageView, imageViews[i]
+            std::array<VkImageView, 3> attachments = { renderTexture->GetImageView(), depthTexture->GetImageView(), textures[i]->GetImageView()
             };
 
             VkFramebufferCreateInfo framebufferInfo{};
@@ -211,7 +195,9 @@ namespace Fox {
             framebufferInfo.height = extent.height;
             framebufferInfo.layers = 1;
 
-            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffers[i]) != VK_SUCCESS) {
+
+            VkFramebuffer* framebuffer = textures[i]->GetFramebuffer();
+            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, framebuffer) != VK_SUCCESS) {
                 throw std::runtime_error("Failed to create framebuffer!");
             }
         }

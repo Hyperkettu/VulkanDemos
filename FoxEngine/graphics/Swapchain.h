@@ -22,14 +22,13 @@ namespace Fox {
 			void Cleanup();
 			void Recreate(VkRenderPass renderPass);
 			void Create();
-			void CreateImageViews();
 			void CreateColorResources();
 			void CreateDepthResources();
 			void CreateFrameBuffers(VkRenderPass renderPass);
 
 
 			inline VkFramebuffer GetFramebuffer(uint32_t imageIndex) {
-				return framebuffers[imageIndex];
+				return *textures[imageIndex]->GetFramebuffer();
 			}
 
 			inline VkExtent2D GetExtent() {
@@ -44,20 +43,24 @@ namespace Fox {
 
 		private: 
 
-			std::vector<VkImage> images;
-			std::vector<VkImageView> imageViews;
-			std::vector<VkFramebuffer> framebuffers;
+	//		std::vector<VkImage> images;
+	//		std::vector<VkImageView> imageViews;
+	//		std::vector<VkFramebuffer> framebuffers;
+
+			std::vector<std::unique_ptr<Fox::Vulkan::SwapchainTexture>> textures;
 
 			VkFormat imageFormat;
 			VkExtent2D extent;
 
-			VkImage colorImage;
-			VkDeviceMemory colorImageMemory;
-			VkImageView colorImageView;
+			//VkImage colorImage;
+			//VkDeviceMemory colorImageMemory;
+			//VkImageView colorImageView;
 
-			VkImage depthImage;
-			VkDeviceMemory depthImageMemory;
-			VkImageView depthImageView;
+		//	VkImage depthImage;
+		//	VkDeviceMemory depthImageMemory;
+		//	VkImageView depthImageView;
+			std::shared_ptr<Fox::Vulkan::RenderTexture> renderTexture;
+			std::shared_ptr<Fox::Vulkan::DepthTexture> depthTexture;
 		};
 	}
 }

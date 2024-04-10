@@ -82,6 +82,7 @@ namespace Fox {
 #include "graphics/RendererConfig.h"
 #include "graphics/Buffer.h"
 #include "graphics/Mesh.h"
+#include "graphics/Texture.h"
 #include "graphics/Model.h"
 #include "graphics/Swapchain.h"
 #include "graphics/Renderer.h"

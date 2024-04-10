@@ -8,6 +8,7 @@ namespace Fox {
 
 		class Model;
 		class Swapchain;
+		class Texture;
 
 		struct QueueFamilyIndices {
 			std::optional<uint32_t> graphicsFamily;
@@ -117,9 +118,6 @@ namespace Fox {
 				void CreateTextureSampler();
 				void CreateTextureImageView(); 
 
-				void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-					VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory); 
-				VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 				void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 
 				void CreateTextureImage();
@@ -129,7 +127,13 @@ namespace Fox {
 				void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
 
 				void ResizeWindow(int width, int height) {
-					frameBufferResized = true;
+					if (screenWidth != width || screenHeight != height) {
+						if (screenWidth != ~0u && screenHeight != ~0u) {
+							frameBufferResized = true;
+						}
+					}
+					screenWidth = width;
+					screenHeight = height;
 				}
 
 				void LoadModel();
@@ -204,14 +208,19 @@ namespace Fox {
 
 
 			uint32_t mipLevels;
-			VkImage textureImage;
-			VkDeviceMemory textureImageMemory;
-			VkImageView textureImageView;
+		//	VkImage textureImage;
+	//		VkDeviceMemory textureImageMemory;
+	//		VkImageView textureImageView;
+
+			std::shared_ptr<Fox::Vulkan::Texture> texture;
+
 			VkSampler textureSampler;
 
 
 
 			bool frameBufferResized = false;
+			uint32_t screenWidth = ~0u; 
+			uint32_t screenHeight = ~0u;
 
 			const int MAX_FRAMES_IN_FLIGHT = 2;
 
