@@ -153,12 +153,16 @@
   <ItemGroup>
     <ClCompile Include="core\FileSystem.cpp" />
     <ClCompile Include="graphics\Buffer.cpp" />
+    <ClCompile Include="graphics\ConstantBuffers.cpp" />
+    <ClCompile Include="graphics\DescriptorSetManager.cpp" />
     <ClCompile Include="graphics\Mesh.cpp" />
     <ClCompile Include="graphics\Model.cpp" />
     <ClCompile Include="graphics\Renderer.cpp" />
+    <ClCompile Include="graphics\SamplerManager.cpp" />
     <ClCompile Include="graphics\Swapchain.cpp" />
     <ClCompile Include="graphics\Synchronization.cpp" />
     <ClCompile Include="graphics\Texture.cpp" />
+    <ClCompile Include="graphics\TextureManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -170,13 +174,17 @@
   <ItemGroup>
     <ClInclude Include="graphics\Buffer.h" />
     <ClInclude Include="core\FileSystem.h" />
+    <ClInclude Include="graphics\ConstantBuffers.h" />
+    <ClInclude Include="graphics\DescriptorSetManager.h" />
     <ClInclude Include="graphics\Mesh.h" />
     <ClInclude Include="graphics\Model.h" />
     <ClInclude Include="graphics\Renderer.h" />
     <ClInclude Include="graphics\RendererConfig.h" />
+    <ClInclude Include="graphics\SamplerManager.h" />
     <ClInclude Include="graphics\Swapchain.h" />
     <ClInclude Include="graphics\Synchronization.h" />
     <ClInclude Include="graphics\Texture.h" />
+    <ClInclude Include="graphics\TextureManager.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

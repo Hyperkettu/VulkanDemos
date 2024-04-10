@@ -32,7 +32,7 @@ namespace Fox {
 
 	namespace Vulkan {
 
-		struct UniformBufferObject {
+		struct PerFrameConstantBuffer {
 			alignas(16) glm::mat4 model;
 			alignas(16) glm::mat4 view;
 			alignas(16) glm::mat4 proj;
@@ -87,5 +87,9 @@ namespace Fox {
 #include "graphics/Swapchain.h"
 #include "core/FileSystem.h"
 #include "graphics/Synchronization.h"
+#include "graphics/ConstantBuffers.h"
+#include "graphics/TextureManager.h"
+#include "graphics/SamplerManager.h"
+#include "graphics/DescriptorSetManager.h"
 #include "graphics/Renderer.h"
 

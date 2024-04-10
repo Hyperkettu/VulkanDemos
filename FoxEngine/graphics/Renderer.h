@@ -10,6 +10,10 @@ namespace Fox {
 		class Swapchain;
 		class Texture;
 		class Synchronization;
+		class DescriptorSetManager;
+		class SamplerManager;
+		class ConstantBuffers;
+		class TextureManager;
 
 		struct QueueFamilyIndices {
 			std::optional<uint32_t> graphicsFamily;
@@ -64,12 +68,7 @@ namespace Fox {
 				VkCommandBuffer BeginSingleTimeCommands();
 				void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
 
-				void DeleteBuffers() {
 
-					for (size_t i = 0u; i < uniformBuffers.size(); i++) {
-						delete uniformBuffers[i];
-					}
-				}
 
 				static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 					VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -100,27 +99,20 @@ namespace Fox {
 				void CreateLogicalDevice();
 
 
-
-				void UpdateUniformBuffer(uint32_t currentImage);
-
 				void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 				void CreateCommandBuffers();
 				void CreateCommandPool(); 
 				void CreateRenderPass(); 
 				void CreateGraphicsPipeline();
-				void CreateDescriptorSets();
-				void CreateDescriptorSetLayout();
 
 				VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 				VkFormat FindDepthFormat();
 				bool HasStencilComponent(VkFormat format);
 
-				void CreateTextureSampler();
 
 				void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 
 				void CreateTextureImage();
-				void CreateUniformBuffers(); 
 				void CreateDescriptorPool();
 				
 				void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
@@ -141,7 +133,18 @@ namespace Fox {
 					return config;
 				}
 
-		//		SDL_Window* window;
+				inline Fox::Vulkan::SamplerManager* GetSamplerManager() {
+					return samplerManager.get();
+				}
+
+				inline Fox::Vulkan::TextureManager* GetTextureManager() {
+					return textureManager.get();
+				}
+
+				inline Fox::Vulkan::ConstantBuffers* GetConstantBuffers() {
+					return constantBuffers.get();
+				}
+
 				VkSurfaceKHR surface;
 				VkInstance instance;
 
@@ -159,7 +162,6 @@ namespace Fox {
 			void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 		
 			const std::string MODEL_PATH = "models/viking.obj";
-			const std::string TEXTURE_PATH = "textures/viking.png";
 
 #ifdef NDEBUG
 			const bool enableValidationLayers = false;
@@ -181,7 +183,6 @@ namespace Fox {
 				VkDevice device;
 				VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
-			std::vector<Fox::Vulkan::Buffer<UniformBufferObject>*> uniformBuffers;
 			VkCommandPool commandPool;
 			VkQueue graphicsQueue;
 
@@ -190,9 +191,6 @@ namespace Fox {
 
 			VkQueue presentQueue;
 			VkRenderPass renderPass;
-			VkDescriptorSetLayout descriptorSetLayout;
-			VkDescriptorPool descriptorPool;
-			std::vector<VkDescriptorSet> descriptorSets;
 			VkPipelineLayout pipelineLayout;
 			VkPipeline graphicsPipeline;
 			std::vector<VkCommandBuffer> commandBuffers; // cleaned with pool automatically
@@ -201,22 +199,22 @@ namespace Fox {
 
 			uint32_t mipLevels;
 
-			std::shared_ptr<Fox::Vulkan::Texture> texture;
-
-			VkSampler textureSampler;
-
-
-
 			bool frameBufferResized = false;
 			uint32_t screenWidth = ~0u; 
 			uint32_t screenHeight = ~0u;
 
 			const int MAX_FRAMES_IN_FLIGHT = 2;
 
-			std::shared_ptr<Fox::Vulkan::Model> model;
 			Fox::Vulkan::RendererConfig config;
-			std::unique_ptr<Fox::Vulkan::Swapchain> swapchain;
 
+			std::unique_ptr<Fox::Vulkan::DescriptorSetManager> descriptorManager;
+			std::unique_ptr<Fox::Vulkan::SamplerManager> samplerManager;
+			std::unique_ptr<Fox::Vulkan::TextureManager> textureManager;
+
+			std::unique_ptr<Fox::Vulkan::ConstantBuffers> constantBuffers;
+
+			std::shared_ptr<Fox::Vulkan::Model> model;
+			std::unique_ptr<Fox::Vulkan::Swapchain> swapchain;
 			std::unique_ptr<Fox::Vulkan::Synchronization> synchronization;
 		};
 	}

@@ -1,9 +1,6 @@
 #include "pch.h"
 #include "Renderer.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <STB_Image/stb_image.h>
-
 namespace Fox {
 	
 	namespace Vulkan {
@@ -36,23 +33,32 @@ namespace Fox {
 
         void Renderer::Initialize() {
             swapchain = std::make_unique<Fox::Vulkan::Swapchain>();
+            descriptorManager = std::make_unique<Fox::Vulkan::DescriptorSetManager>(MAX_FRAMES_IN_FLIGHT);
 
             PickPhysicalDevice();
             CreateLogicalDevice();
             swapchain->Create();
             CreateRenderPass();
-            CreateDescriptorSetLayout();
+            descriptorManager->CreateDescriptorSetLayouts();
             CreateGraphicsPipeline();
             CreateCommandPool();
             swapchain->CreateColorResources();
             swapchain->CreateDepthResources();
             swapchain->CreateFrameBuffers(renderPass);
-            CreateTextureImage();
-            CreateTextureSampler();
+
+            textureManager = std::make_unique<Fox::Vulkan::TextureManager>();
+            textureManager->CreateTextures(mipLevels);
+
+            samplerManager = std::make_unique<Fox::Vulkan::SamplerManager>(mipLevels);
+            samplerManager->CreateSamplers();
+
             LoadModel();
-            CreateUniformBuffers();
-            CreateDescriptorPool();
-            CreateDescriptorSets();
+
+            constantBuffers = std::make_unique<Fox::Vulkan::ConstantBuffers>();
+            constantBuffers->CreateUniformBuffers(MAX_FRAMES_IN_FLIGHT);
+
+            descriptorManager->CreateDescriptorPools();
+            descriptorManager->CreateDescriptorSets();
             CreateCommandBuffers();
             
             synchronization = std::make_unique<Fox::Vulkan::Synchronization>(MAX_FRAMES_IN_FLIGHT);
@@ -62,16 +68,12 @@ namespace Fox {
             model->~Model();
             model = nullptr;
 
-            DeleteBuffers();
+            constantBuffers = nullptr;
             swapchain->Cleanup();
-            texture = nullptr;
 
-            vkDestroySampler(device, textureSampler, nullptr);
-
-            vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-
-            vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-
+            textureManager = nullptr;
+            samplerManager = nullptr;
+            descriptorManager = nullptr;
             synchronization = nullptr;
 
             vkDestroyCommandPool(device, commandPool, nullptr);
@@ -115,7 +117,7 @@ namespace Fox {
             vkResetCommandBuffer(commandBuffers[currentFrame], 0);
             RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
-            UpdateUniformBuffer(currentFrame);
+            constantBuffers->SyncPerFrame(currentFrame);
 
             VkSubmitInfo submitInfo{};
             submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -214,47 +216,13 @@ namespace Fox {
             vkCmdBindIndexBuffer(commandBuffer, model->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
             vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
-                &descriptorSets[currentFrame], 0, nullptr);
+                descriptorManager->GetAddressOfDescriptorSet(currentFrame), 0, nullptr);
             vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model->GetIndexCount()), 1, 0, 0, 0);
 
             vkCmdEndRenderPass(commandBuffer);
 
             if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
                 throw std::runtime_error("Failed to record command buffer!");
-            }
-        }
-
-        void Renderer::CreateTextureSampler() {
-
-            VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
-            VkPhysicalDeviceProperties properties{};
-            vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-            VkSamplerCreateInfo samplerInfo{};
-            samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-            samplerInfo.magFilter = VK_FILTER_LINEAR;
-            samplerInfo.minFilter = VK_FILTER_LINEAR;
-            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-            samplerInfo.anisotropyEnable = VK_TRUE;
-            samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-
-            samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-            samplerInfo.unnormalizedCoordinates = VK_FALSE;
-
-            samplerInfo.compareEnable = VK_FALSE;
-            samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-            samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-            samplerInfo.mipLodBias = 0.0f;
-            samplerInfo.minLod = 0.0f;
-            samplerInfo.maxLod = static_cast<float>(mipLevels);
-
-            if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
-                throw std::runtime_error("Failed to create texture sampler!");
             }
         }
 
@@ -480,7 +448,7 @@ namespace Fox {
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
             pipelineLayoutInfo.setLayoutCount = 1; // Optional
-            pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // Optional
+            pipelineLayoutInfo.pSetLayouts = descriptorManager->GetAddressOfDescriptorSetLayout(); // Optional
             pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
             pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
@@ -637,22 +605,7 @@ namespace Fox {
             }
         }
 
-        void Renderer::UpdateUniformBuffer(uint32_t currentImage) {
-            static auto startTime = std::chrono::high_resolution_clock::now();
-
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-            Fox::Vulkan::UniformBufferObject ubo{};
-            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-            ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-            ubo.proj = glm::perspective(glm::radians(45.0f), swapchain->GetExtent().width / (float)swapchain->GetExtent().height, 0.1f, 10.0f);
-            ubo.proj[1][1] *= -1;
-
-
-            uniformBuffers[currentImage]->Update(ubo);
-
-        }
+        
 
 
 
@@ -804,164 +757,6 @@ namespace Fox {
             return indices;
         }
 
-        
-
-        void Renderer::CreateUniformBuffers() {
-
-            VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
-            VkDeviceSize bufferSize = sizeof(Fox::Vulkan::UniformBufferObject);
-
-            uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-            for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-
-                Fox::Vulkan::Buffer<Fox::Vulkan::UniformBufferObject>* uniformBuffer = new Fox::Vulkan::Buffer<Fox::Vulkan::UniformBufferObject>();
-                uniformBuffer->Create(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-                uniformBuffer->Map();
-                uniformBuffers[i] = uniformBuffer;
-
-            }
-        }
-
-        void Renderer::CreateDescriptorPool() {
-            VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
-            std::array<VkDescriptorPoolSize, 2> poolSizes{};
-            poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-            poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-            VkDescriptorPoolCreateInfo poolInfo{};
-            poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-            poolInfo.pPoolSizes = poolSizes.data();
-            poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-            if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-                throw std::runtime_error("Failed to create descriptor pool!");
-            }
-        }
-
-        void Renderer::CreateTextureImage() {
-
-            VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
-            int texWidth, texHeight, texChannels;
-            stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-            VkDeviceSize imageSize = texWidth * texHeight * 4;
-
-            mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
-
-            if (!pixels) {
-                throw std::runtime_error("Failed to load texture image!");
-            }
-
-            Fox::Vulkan::Buffer<unsigned char*> stagingBuffer;
-
-            stagingBuffer.Create(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-            stagingBuffer.CopyImage(imageSize, pixels);
-
-            stbi_image_free(pixels);
-
-            texture = std::make_shared<Fox::Vulkan::Texture>(texWidth, texHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB,
-                VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
-
-            TransitionImageLayout(texture->GetImage(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
-            CopyBufferToImage(stagingBuffer.GetBuffer(), texture->GetImage(), static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-            GenerateMipmaps(texture->GetImage(), VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
-        }
-
-        void Renderer::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
-            VkFormatProperties formatProperties;
-            vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties);
-
-            if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
-                throw std::runtime_error("Texture image format does not support linear blitting!");
-            }
-
-            VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
-
-            VkImageMemoryBarrier barrier{};
-            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            barrier.image = image;
-            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
-            barrier.subresourceRange.levelCount = 1;
-
-            int32_t mipWidth = texWidth;
-            int32_t mipHeight = texHeight;
-
-            for (uint32_t i = 1; i < mipLevels; i++) {
-
-                int32_t targetMipWidth = mipWidth > 1 ? mipWidth >> 1 : 1;
-                int32_t targetMipHeight = mipHeight > 1 ? mipHeight >> 1 : 1;
-
-                barrier.srcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier.dstAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
-                barrier.subresourceRange.baseMipLevel = i - 1;
-                barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-                barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-
-                vkCmdPipelineBarrier(commandBuffer, VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-                VkImageBlit blit{};
-                blit.srcOffsets[0] = { 0, 0, 0 };
-                blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
-                blit.srcSubresource.aspectMask = VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-                blit.srcSubresource.baseArrayLayer = 0;
-                blit.srcSubresource.layerCount = 1;
-                blit.srcSubresource.mipLevel = i - 1;
-
-                blit.dstOffsets[0] = { 0, 0, 0 };
-                blit.dstOffsets[1] = { targetMipWidth, targetMipHeight, 1 };
-                blit.dstSubresource.aspectMask = VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
-                blit.dstSubresource.baseArrayLayer = 0;
-                blit.dstSubresource.layerCount = 1;
-                blit.dstSubresource.mipLevel = i;
-
-
-                vkCmdBlitImage(commandBuffer, image, VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    image, VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VkFilter::VK_FILTER_LINEAR);
-
-                barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-                vkCmdPipelineBarrier(commandBuffer,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-                    0, nullptr,
-                    0, nullptr,
-                    1, &barrier);
-
-                if (mipWidth > 1) mipWidth >>= 1;
-                if (mipHeight > 1) mipHeight >>= 1;
-            }
-
-            barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-            vkCmdPipelineBarrier(commandBuffer,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-                0, nullptr,
-                0, nullptr,
-                1, &barrier);
-
-            EndSingleTimeCommands(commandBuffer);
-        }
-
         void Renderer::CreateVulkanInstance() {
             VkApplicationInfo applicationInfo = {};
             applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -1096,83 +891,6 @@ namespace Fox {
             auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
             if (func != nullptr) {
                 func(instance, debugMessenger, pAllocator);
-            }
-        }
-
-        void Renderer::CreateDescriptorSetLayout() {
-
-            VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
-            VkDescriptorSetLayoutBinding uboLayoutBinding{};
-            uboLayoutBinding.binding = 0;
-            uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            uboLayoutBinding.descriptorCount = 1;
-            uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            uboLayoutBinding.pImmutableSamplers = nullptr; // Optional
-
-            VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-            samplerLayoutBinding.binding = 1;
-            samplerLayoutBinding.descriptorCount = 1;
-            samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            samplerLayoutBinding.pImmutableSamplers = nullptr;
-            samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-            std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
-            VkDescriptorSetLayoutCreateInfo layoutInfo{};
-            layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-            layoutInfo.pBindings = bindings.data();
-
-            if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-                throw std::runtime_error("Failed to create descriptor set layout!");
-            }
-        }
-
-        void Renderer::CreateDescriptorSets() {
-
-            VkDevice device = Fox::Vulkan::Renderer::GetDevice();
-
-            std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
-            VkDescriptorSetAllocateInfo allocInfo{};
-            allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            allocInfo.descriptorPool = descriptorPool;
-            allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-            allocInfo.pSetLayouts = layouts.data();
-
-            descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-            if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
-                throw std::runtime_error("failed to allocate descriptor sets!");
-            }
-
-            for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                VkDescriptorBufferInfo bufferInfo{};
-                bufferInfo.buffer = uniformBuffers[i]->GetBuffer();
-                bufferInfo.offset = 0;
-                bufferInfo.range = sizeof(Fox::Vulkan::UniformBufferObject);
-
-                VkDescriptorImageInfo imageInfo{};
-                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                imageInfo.imageView = texture->GetImageView();
-                imageInfo.sampler = textureSampler;
-
-                std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-                descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                descriptorWrites[0].dstSet = descriptorSets[i];
-                descriptorWrites[0].dstBinding = 0;
-                descriptorWrites[0].dstArrayElement = 0;
-                descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                descriptorWrites[0].descriptorCount = 1;
-                descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-                descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                descriptorWrites[1].dstSet = descriptorSets[i];
-                descriptorWrites[1].dstBinding = 1;
-                descriptorWrites[1].dstArrayElement = 0;
-                descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                descriptorWrites[1].descriptorCount = 1;
-                descriptorWrites[1].pImageInfo = &imageInfo;
-
-                vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
             }
         }
 
