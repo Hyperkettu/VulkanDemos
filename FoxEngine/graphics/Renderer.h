@@ -9,6 +9,7 @@ namespace Fox {
 		class Model;
 		class Swapchain;
 		class Texture;
+		class Synchronization;
 
 		struct QueueFamilyIndices {
 			std::optional<uint32_t> graphicsFamily;
@@ -107,7 +108,6 @@ namespace Fox {
 				void CreateCommandPool(); 
 				void CreateRenderPass(); 
 				void CreateGraphicsPipeline();
-				void CreateSyncObjects();
 				void CreateDescriptorSets();
 				void CreateDescriptorSetLayout();
 
@@ -196,20 +196,10 @@ namespace Fox {
 			VkPipelineLayout pipelineLayout;
 			VkPipeline graphicsPipeline;
 			std::vector<VkCommandBuffer> commandBuffers; // cleaned with pool automatically
-			std::vector<VkSemaphore> imageAvailableSemaphores;
-			std::vector<VkSemaphore> renderFinishedSemaphores;
-			std::vector<VkFence> inFlightFences;
+
 			uint32_t currentFrame = 0u;
 
-
-
-
-
-
 			uint32_t mipLevels;
-		//	VkImage textureImage;
-	//		VkDeviceMemory textureImageMemory;
-	//		VkImageView textureImageView;
 
 			std::shared_ptr<Fox::Vulkan::Texture> texture;
 
@@ -227,7 +217,7 @@ namespace Fox {
 			Fox::Vulkan::RendererConfig config;
 			std::unique_ptr<Fox::Vulkan::Swapchain> swapchain;
 
-
+			std::unique_ptr<Fox::Vulkan::Synchronization> synchronization;
 		};
 	}
 }

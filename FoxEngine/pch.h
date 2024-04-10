@@ -86,5 +86,6 @@ namespace Fox {
 #include "graphics/Model.h"
 #include "graphics/Swapchain.h"
 #include "core/FileSystem.h"
+#include "graphics/Synchronization.h"
 #include "graphics/Renderer.h"
 

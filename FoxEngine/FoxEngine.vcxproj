@@ -157,6 +157,7 @@
     <ClCompile Include="graphics\Model.cpp" />
     <ClCompile Include="graphics\Renderer.cpp" />
     <ClCompile Include="graphics\Swapchain.cpp" />
+    <ClCompile Include="graphics\Synchronization.cpp" />
     <ClCompile Include="graphics\Texture.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
@@ -174,6 +175,7 @@
     <ClInclude Include="graphics\Renderer.h" />
     <ClInclude Include="graphics\RendererConfig.h" />
     <ClInclude Include="graphics\Swapchain.h" />
+    <ClInclude Include="graphics\Synchronization.h" />
     <ClInclude Include="graphics\Texture.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
