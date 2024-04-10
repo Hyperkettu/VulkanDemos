@@ -1,7 +1,7 @@
 #pragma once
 
 namespace Fox {
-
+	
 	namespace Vulkan {
 	
 		class Model {
@@ -21,7 +21,7 @@ namespace Fox {
 				return mesh->GetIndexCount();
 			}
 
-			void load(const std::string& path);
+			void Load(const std::string& path);
 		private:
 
 			std::shared_ptr<Mesh> mesh;

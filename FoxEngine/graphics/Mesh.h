@@ -6,7 +6,8 @@ namespace Fox {
 	
 	namespace Vulkan {
 
-	
+		class Renderer;
+
 		template<class V>
 		class MeshBase {
 		public: 
@@ -39,7 +40,7 @@ namespace Fox {
 				this->vertices = new Fox::Vulkan::Buffer<V>();
 				this->vertices->Create(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 				this->vertices->SetContents(vertices, false);
-				renderer->copyBuffer(vertexStagingBuffer.GetBuffer(), this->vertices->GetBuffer(), vertexBufferSize);
+				renderer->CopyBuffer(vertexStagingBuffer.GetBuffer(), this->vertices->GetBuffer(), vertexBufferSize);
 
 				VkDeviceSize indexBufferSize = sizeof(I) * indices.size();
 				Fox::Vulkan::Buffer<I> indexStagingBuffer;
@@ -50,7 +51,7 @@ namespace Fox {
 				this->indices = new Fox::Vulkan::Buffer<I>();
 				this->indices->Create(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 				this->indices->SetContents(indices, false);
-				renderer->copyBuffer(indexStagingBuffer.GetBuffer(), this->indices->GetBuffer(), indexBufferSize);
+				renderer->CopyBuffer(indexStagingBuffer.GetBuffer(), this->indices->GetBuffer(), indexBufferSize);
 
 			}
 

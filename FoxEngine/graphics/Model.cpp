@@ -20,7 +20,7 @@ namespace Fox {
         Model::~Model() {
         }
 
-        void Model::load(const std::string& path) {
+        void Model::Load(const std::string& path) {
 
             tinyobj::attrib_t attrib;
             std::vector<tinyobj::shape_t> shapes;
