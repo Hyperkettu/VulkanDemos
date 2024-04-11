@@ -14,6 +14,7 @@ namespace Fox {
 		class SamplerManager;
 		class ConstantBuffers;
 		class TextureManager;
+		class GraphicsPipelineStateManager;
 
 		struct QueueFamilyIndices {
 			std::optional<uint32_t> graphicsFamily;
@@ -103,18 +104,10 @@ namespace Fox {
 				void CreateCommandBuffers();
 				void CreateCommandPool(); 
 				void CreateRenderPass(); 
-				void CreateGraphicsPipeline();
 
 				VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 				VkFormat FindDepthFormat();
-				bool HasStencilComponent(VkFormat format);
-
-
-				void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
-
-				void CreateTextureImage();
-				void CreateDescriptorPool();
-				
+				bool HasStencilComponent(VkFormat format);				
 				void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
 
 				void ResizeWindow(int width, int height) {
@@ -143,6 +136,10 @@ namespace Fox {
 
 				inline Fox::Vulkan::ConstantBuffers* GetConstantBuffers() {
 					return constantBuffers.get();
+				}
+
+				inline Fox::Vulkan::DescriptorSetManager* GetDesciptorManager() {
+					return descriptorManager.get();
 				}
 
 				VkSurfaceKHR surface;
@@ -191,8 +188,7 @@ namespace Fox {
 
 			VkQueue presentQueue;
 			VkRenderPass renderPass;
-			VkPipelineLayout pipelineLayout;
-			VkPipeline graphicsPipeline;
+
 			std::vector<VkCommandBuffer> commandBuffers; // cleaned with pool automatically
 
 			uint32_t currentFrame = 0u;
@@ -210,12 +206,13 @@ namespace Fox {
 			std::unique_ptr<Fox::Vulkan::DescriptorSetManager> descriptorManager;
 			std::unique_ptr<Fox::Vulkan::SamplerManager> samplerManager;
 			std::unique_ptr<Fox::Vulkan::TextureManager> textureManager;
-
+			std::unique_ptr<Fox::Vulkan::GraphicsPipelineStateManager> graphicsPipelineState;
 			std::unique_ptr<Fox::Vulkan::ConstantBuffers> constantBuffers;
-
-			std::shared_ptr<Fox::Vulkan::Model> model;
 			std::unique_ptr<Fox::Vulkan::Swapchain> swapchain;
 			std::unique_ptr<Fox::Vulkan::Synchronization> synchronization;
+
+			std::shared_ptr<Fox::Vulkan::Model> model;
+
 		};
 	}
 }

@@ -12,14 +12,14 @@ namespace Fox {
             VkDevice device = Fox::Vulkan::Renderer::GetDevice();
             VkDeviceSize bufferSize = sizeof(Fox::Vulkan::PerFrameConstantBuffer);
 
-            uniformBuffers.resize(maxFramesInFlight);
+            perFrame.resize(maxFramesInFlight);
 
             for (size_t i = 0; i < maxFramesInFlight; i++) {
 
                 Fox::Vulkan::Buffer<Fox::Vulkan::PerFrameConstantBuffer>* uniformBuffer = new Fox::Vulkan::Buffer<Fox::Vulkan::PerFrameConstantBuffer>();
                 uniformBuffer->Create(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
                 uniformBuffer->Map();
-                uniformBuffers[i] = uniformBuffer;
+                perFrame[i] = uniformBuffer;
 
             }
         }
@@ -41,14 +41,14 @@ namespace Fox {
             perFrame.proj[1][1] *= -1;
 
 
-            uniformBuffers[currentImage]->Update(perFrame);
+            this->perFrame[currentImage]->Update(perFrame);
 
         }	
 
         void ConstantBuffers::DeleteBuffers() {
 
-            for (size_t i = 0u; i < uniformBuffers.size(); i++) {
-                delete uniformBuffers[i];
+            for (size_t i = 0u; i < perFrame.size(); i++) {
+                delete perFrame[i];
             }
         }
 		

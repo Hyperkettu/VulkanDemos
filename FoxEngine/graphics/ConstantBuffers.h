@@ -11,7 +11,7 @@ namespace Fox {
 			~ConstantBuffers();
 
 			inline VkBuffer GetPerFrameConstantBuffer(uint32_t imageIndex) {
-				return uniformBuffers[imageIndex]->GetBuffer();
+				return perFrame[imageIndex]->GetBuffer();
 			}
 
 			void CreateUniformBuffers(uint32_t maxFramesInFlight);
@@ -21,7 +21,7 @@ namespace Fox {
 
 			void DeleteBuffers();
 
-			std::vector<Fox::Vulkan::Buffer<PerFrameConstantBuffer>*> uniformBuffers;
+			std::vector<Fox::Vulkan::Buffer<PerFrameConstantBuffer>*> perFrame;
 
 
 		};
