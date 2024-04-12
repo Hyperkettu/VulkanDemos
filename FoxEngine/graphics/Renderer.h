@@ -15,6 +15,7 @@ namespace Fox {
 		class ConstantBuffers;
 		class TextureManager;
 		class GraphicsPipelineStateManager;
+		class RenderPassManager;
 
 		struct QueueFamilyIndices {
 			std::optional<uint32_t> graphicsFamily;
@@ -114,7 +115,6 @@ namespace Fox {
 				void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 				void CreateCommandBuffers();
 				void CreateCommandPool(); 
-				void CreateRenderPass(); 
 
 				VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 				VkFormat FindDepthFormat();
@@ -151,6 +151,10 @@ namespace Fox {
 
 				inline Fox::Vulkan::DescriptorSetManager* GetDesciptorManager() {
 					return descriptorManager.get();
+				}
+
+				inline Fox::Vulkan::RenderPassManager* GetRenderPassManager() {
+					return renderPassManager.get();
 				}
 
 				VkSurfaceKHR surface;
@@ -198,7 +202,6 @@ namespace Fox {
 			VkDebugUtilsMessengerEXT debugMessenger;
 
 			VkQueue presentQueue;
-			VkRenderPass renderPass;
 
 			std::vector<VkCommandBuffer> commandBuffers; // cleaned with pool automatically
 
@@ -217,6 +220,7 @@ namespace Fox {
 			std::unique_ptr<Fox::Vulkan::DescriptorSetManager> descriptorManager;
 			std::unique_ptr<Fox::Vulkan::SamplerManager> samplerManager;
 			std::unique_ptr<Fox::Vulkan::TextureManager> textureManager;
+			std::unique_ptr<Fox::Vulkan::RenderPassManager> renderPassManager;
 			std::unique_ptr<Fox::Vulkan::GraphicsPipelineStateManager> graphicsPipelineState;
 			std::unique_ptr<Fox::Vulkan::ConstantBuffers> constantBuffers;
 			std::unique_ptr<Fox::Vulkan::Swapchain> swapchain;

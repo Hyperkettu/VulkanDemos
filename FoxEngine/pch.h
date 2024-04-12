@@ -91,6 +91,7 @@ namespace Fox {
 #include "graphics/TextureManager.h"
 #include "graphics/SamplerManager.h"
 #include "graphics/DescriptorSetManager.h"
+#include "graphics/RenderPassManager.h"
 #include "graphics/GraphicsPipelineState.h"
 #include "graphics/Renderer.h"
 

@@ -49,7 +49,7 @@ namespace Fox {
             pipelineInfo.pColorBlendState = &colorBlending;
             pipelineInfo.pDynamicState = &dynamicState;
             pipelineInfo.layout = pipelineLayout;
-            pipelineInfo.renderPass = renderer->renderPass;
+            pipelineInfo.renderPass = renderer->GetRenderPassManager()->GetRenderPass();
             pipelineInfo.subpass = 0;
             pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
             pipelineInfo.basePipelineIndex = -1; // Optional
