@@ -49,6 +49,17 @@ namespace Fox {
 				void Destroy();
 
 				void Render();
+				void RenderBegin(VkCommandBuffer commandBuffer);
+				void RenderEnd(VkCommandBuffer commandBuffer);
+				void DrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance);
+				void SetDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint bindPoint, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* descriptorSets);
+				void SetIndexBuffer(VkCommandBuffer commandBuffer, VkBuffer indexBuffer, VkDeviceSize offset, VkIndexType type);
+				void SetVertexBuffers(VkCommandBuffer commandBuffer, std::vector<VkBuffer>& vertexBuffers, uint32_t firstBinding, const VkDeviceSize* offsets);
+				void SetScissor(VkCommandBuffer commandBuffer, VkOffset2D offset, VkExtent2D extent);
+				void SetViewport(VkCommandBuffer commandBuffer, float topleftX, float topleftY, float width, float height, float minDepth, float maxDepth);
+				void SetGraphicsPipeline(VkCommandBuffer commandBuffer, VkPipeline pipeline);
+				void RenderPassBegin(VkCommandBuffer commandBuffer, VkClearColorValue clearColor, float clearDepth, uint32_t clearStencil, VkRenderPass renderPass, VkFramebuffer framebuffer, VkOffset2D renderAreaOffset, VkExtent2D renderArea);
+				void RenderPassEnd(VkCommandBuffer);
 
 				uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 					VkPhysicalDeviceMemoryProperties memProperties;

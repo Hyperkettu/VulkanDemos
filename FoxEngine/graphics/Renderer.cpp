@@ -168,7 +168,7 @@ namespace Fox {
         
         }
 
-        void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+        void Renderer::RenderBegin(VkCommandBuffer commandBuffer) {
             VkCommandBufferBeginInfo beginInfo{};
             beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
             beginInfo.flags = 0; // Optional
@@ -177,53 +177,95 @@ namespace Fox {
             if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
                 throw std::runtime_error("Failed to begin recording command buffer!");
             }
+        }
 
+        void Renderer::RenderEnd(VkCommandBuffer commandBuffer) {
+            if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+                throw std::runtime_error("Failed to record command buffer!");
+            }
+        }
+
+        void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+           
+            RenderBegin(commandBuffer);
+            RenderPassBegin(commandBuffer, { 0.0f, 0.0f, 0.0f, 1.0f }, 1.0f, 0, renderPass, swapchain->GetFramebuffer(imageIndex), { 0, 0 }, swapchain->GetExtent());
+
+            SetGraphicsPipeline(commandBuffer, graphicsPipelineState->GetCurrentPipelineState());
+            SetViewport(commandBuffer, 0.0f, 0.0f, static_cast<float>(swapchain->GetExtent().width), static_cast<float>(swapchain->GetExtent().height), 0.0f, 1.0f);
+            SetScissor(commandBuffer, { 0, 0 }, swapchain->GetExtent());
+
+            VkDeviceSize offsets[] = { 0 };
+            std::vector<VkBuffer> vertexBuffers;
+            vertexBuffers.push_back(model->GetVertexBuffer());
+            SetVertexBuffers(commandBuffer, vertexBuffers, 0, offsets);
+
+            SetIndexBuffer(commandBuffer, model->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+            SetDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 0, 1, descriptorManager->GetAddressOfDescriptorSet(currentFrame));
+            DrawIndexed(commandBuffer, static_cast<uint32_t>(model->GetIndexCount()), 1, 0, 0, 0);
+
+            RenderPassEnd(commandBuffer);
+            RenderEnd(commandBuffer);
+        }
+
+        void Renderer::RenderPassBegin(VkCommandBuffer commandBuffer, VkClearColorValue clearColor, float clearDepth, uint32_t clearStencil, VkRenderPass renderPass, VkFramebuffer framebuffer, VkOffset2D renderAreaOffset, VkExtent2D renderArea) {
             VkRenderPassBeginInfo renderPassInfo{};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             renderPassInfo.renderPass = renderPass;
-            renderPassInfo.framebuffer = swapchain->GetFramebuffer(imageIndex);
-            renderPassInfo.renderArea.offset = { 0, 0 };
-            renderPassInfo.renderArea.extent = swapchain->GetExtent();
+            renderPassInfo.framebuffer = framebuffer;
+            renderPassInfo.renderArea.offset = renderAreaOffset;
+            renderPassInfo.renderArea.extent = renderArea;
 
             std::array<VkClearValue, 2> clearValues{};
-            clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-            clearValues[1].depthStencil = { 1.0f, 0 };
+            clearValues[0].color = { clearColor };
+            clearValues[1].depthStencil = { clearDepth, clearStencil };
             renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
             renderPassInfo.pClearValues = clearValues.data();
 
             vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        }
 
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineState->GetCurrentPipelineState());
-
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(swapchain->GetExtent().width);
-            viewport.height = static_cast<float>(swapchain->GetExtent().height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = swapchain->GetExtent();
-            vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-            VkBuffer vertexBuffers[] = { model->GetVertexBuffer() };
-            VkDeviceSize offsets[] = { 0 };
-            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-            vkCmdBindIndexBuffer(commandBuffer, model->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipelineState->GetCurrentPipelineStateLayout(), 0, 1,
-                descriptorManager->GetAddressOfDescriptorSet(currentFrame), 0, nullptr);
-            vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model->GetIndexCount()), 1, 0, 0, 0);
-
+        void Renderer::RenderPassEnd(VkCommandBuffer commandBuffer) {
             vkCmdEndRenderPass(commandBuffer);
 
-            if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-                throw std::runtime_error("Failed to record command buffer!");
-            }
+        }
+
+        void Renderer::SetGraphicsPipeline(VkCommandBuffer commandBuffer, VkPipeline pipeline) {
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        }
+
+        void Renderer::SetViewport(VkCommandBuffer commandBuffer, float topleftX, float topleftY, float width, float height, float minDepth, float maxDepth) {
+            VkViewport viewport{};
+            viewport.x = topleftX;
+            viewport.y = topleftY;
+            viewport.width = width;
+            viewport.height = height;
+            viewport.minDepth = minDepth;
+            viewport.maxDepth = maxDepth;
+            vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+        }
+
+        void Renderer::SetScissor(VkCommandBuffer commandBuffer, VkOffset2D offset, VkExtent2D extent) {
+            VkRect2D scissor{};
+            scissor.offset = offset;
+            scissor.extent = extent;
+            vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+        }
+
+        void Renderer::SetIndexBuffer(VkCommandBuffer commandBuffer, VkBuffer indexBuffer, VkDeviceSize offset, VkIndexType type) {
+            vkCmdBindIndexBuffer(commandBuffer, indexBuffer, offset, type);
+        }
+
+        void Renderer::SetVertexBuffers(VkCommandBuffer commandBuffer, std::vector<VkBuffer>& vertexBuffers, uint32_t firstBinding, const VkDeviceSize* offsets) {
+            vkCmdBindVertexBuffers(commandBuffer, firstBinding, vertexBuffers.size(), vertexBuffers.data(), offsets);
+        }
+
+        void Renderer::DrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
+            vkCmdDrawIndexed(commandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+        }
+
+        void Renderer::SetDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint bindPoint, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* descriptorSets) {
+            vkCmdBindDescriptorSets(commandBuffer, bindPoint, graphicsPipelineState->GetCurrentPipelineStateLayout(), firstSet, descriptorSetCount,
+                descriptorSets, 0, nullptr);
         }
 
         bool Renderer::HasStencilComponent(VkFormat format) {

@@ -12,7 +12,6 @@ namespace Fox {
 
 			GraphicsPipelineState& WithShader(const std::string& shaderPath, VkShaderStageFlagBits shaderStage);
 			GraphicsPipelineState& WithDynamicState(std::vector<VkDynamicState>& dynamicStates);
-			GraphicsPipelineState& WithVertexInputState(VkVertexInputBindingDescription vertexInputBindings, std::array<VkVertexInputAttributeDescription, 3>& vertexInputAttributes);
 			GraphicsPipelineState& WithInputAssembly(VkPrimitiveTopology primitiveTopology, VkBool32 primitiveRestartEnable);
 			GraphicsPipelineState& WithViewportState(float viewportX, float viewportY, float viewportWidth, float viewportHeight,
 				float viewportMinDepth, float viewportMaxDepth, int scissorX, int scissorY, VkExtent2D scissorExtent);
@@ -56,7 +55,7 @@ namespace Fox {
 				VkStencilOpState backState
 			);
 
-
+			template<class VertexType>
 			void Create();
 
 			inline VkPipeline GetPipelineState() {
@@ -72,7 +71,6 @@ namespace Fox {
 			VkPipeline graphicsPipeline;
 
 			VkPipelineDynamicStateCreateInfo dynamicState;
-			VkPipelineVertexInputStateCreateInfo vertexInputState = {};
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 			VkPipelineViewportStateCreateInfo viewportState = {};
 			VkPipelineRasterizationStateCreateInfo rasterizer = {};
@@ -80,9 +78,6 @@ namespace Fox {
 			VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
 			VkPipelineColorBlendStateCreateInfo colorBlending = {};
 			VkPipelineDepthStencilStateCreateInfo depthStencil{};
-
-
-
 
 			std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 			std::vector<VkShaderModule> shaderModules;

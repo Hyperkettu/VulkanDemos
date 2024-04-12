@@ -10,6 +10,7 @@ namespace Fox {
             vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         }
 
+        template<class VertexType>
         void GraphicsPipelineState::Create() {
             VkDevice device = Fox::Vulkan::Renderer::GetDevice();
             Fox::Vulkan::Renderer* renderer = Fox::Vulkan::Renderer::GetRenderer();
@@ -25,21 +26,21 @@ namespace Fox {
                 throw std::runtime_error("Failed to create pipeline layout!");
             }
 
-            auto bindings = Fox::Vulkan::Vertex::getBindingDescription();
-            VkPipelineVertexInputStateCreateInfo vertexInputState2;
-            vertexInputState2.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertexInputState2.vertexBindingDescriptionCount = 1;
-            vertexInputState2.pVertexBindingDescriptions = &bindings; // Optional
-            vertexInputState2.vertexAttributeDescriptionCount = static_cast<uint32_t>(Fox::Vulkan::Vertex::getAttributeDescriptions().size());
-            vertexInputState2.pVertexAttributeDescriptions = Fox::Vulkan::Vertex::getAttributeDescriptions().data(); // Optional
-            vertexInputState2.flags = 0;
-            vertexInputState2.pNext = nullptr; 
+            auto bindings = VertexType::getBindingDescription();
+            VkPipelineVertexInputStateCreateInfo vertexInputState;
+            vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            vertexInputState.vertexBindingDescriptionCount = 1;
+            vertexInputState.pVertexBindingDescriptions = &bindings; // Optional
+            vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(Fox::Vulkan::Vertex::getAttributeDescriptions().size());
+            vertexInputState.pVertexAttributeDescriptions = VertexType::getAttributeDescriptions().data(); // Optional
+            vertexInputState.flags = 0;
+            vertexInputState.pNext = nullptr; 
 
             VkGraphicsPipelineCreateInfo pipelineInfo{};
             pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
             pipelineInfo.pStages = shaderStages.data();
-            pipelineInfo.pVertexInputState = &vertexInputState2;
+            pipelineInfo.pVertexInputState = &vertexInputState;
             pipelineInfo.pInputAssemblyState = &inputAssembly;
             pipelineInfo.pViewportState = &viewportState;
             pipelineInfo.pRasterizationState = &rasterizer;
@@ -85,22 +86,6 @@ namespace Fox {
             dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
             dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
             dynamicState.pDynamicStates = dynamicStates.data();
-
-            return *this;
-        }
-
-        GraphicsPipelineState& GraphicsPipelineState::WithVertexInputState(VkVertexInputBindingDescription vertexInputBindings,
-            std::array<VkVertexInputAttributeDescription, 3>& vertexInputAttributes) {
-            auto bindingDescription = vertexInputBindings;
-            auto attributeDescriptions = vertexInputAttributes;
-
-            vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            vertexInputState.vertexBindingDescriptionCount = 1;
-            vertexInputState.pVertexBindingDescriptions = &bindingDescription; // Optional
-            vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-            vertexInputState.pVertexAttributeDescriptions = attributeDescriptions.data(); // Optional
-            vertexInputState.flags = 0;
-            vertexInputState.pNext = nullptr;
 
             return *this;
         }
@@ -258,8 +243,6 @@ namespace Fox {
                 VK_DYNAMIC_STATE_VIEWPORT,
                 VK_DYNAMIC_STATE_SCISSOR
             };
-            std::array<VkVertexInputAttributeDescription, 3> attributes = Fox::Vulkan::Vertex::getAttributeDescriptions();
-            auto bindings = Fox::Vulkan::Vertex::getBindingDescription();
 
             float blendConstants[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
@@ -269,7 +252,6 @@ namespace Fox {
                 WithShader("shaders/vert.spv", VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT).
                 WithShader("shaders/frag.spv", VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT).
                 WithDynamicState(dynamicStates).
-                WithVertexInputState(bindings, attributes).
                 WithInputAssembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE).
                 WithViewportState(0.0f, 0.0f, static_cast<float>(renderer->swapchain->GetExtent().width), static_cast<float>(renderer->swapchain->GetExtent().height),
                     0.0f, 1.0f, 0, 0, renderer->swapchain->GetExtent()).
@@ -279,7 +261,7 @@ namespace Fox {
                     VK_BLEND_OP_ADD, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD).
                 WithColorBlending(VK_FALSE, VK_LOGIC_OP_COPY, 1, blendConstants).
                 WithDepthStencil(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, 0.0f, 1.0f, VK_FALSE, {}, {}).
-                Create();
+                Create<Fox::Vulkan::Vertex>();
 
             SetAsCurrentPipelineState(graphicsPipelineState);
 
