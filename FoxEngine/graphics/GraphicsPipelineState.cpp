@@ -31,7 +31,7 @@ namespace Fox {
             vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
             vertexInputState.vertexBindingDescriptionCount = 1;
             vertexInputState.pVertexBindingDescriptions = &bindings; // Optional
-            vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(Fox::Vulkan::Vertex::getAttributeDescriptions().size());
+            vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(VertexType::getAttributeDescriptions().size());
             vertexInputState.pVertexAttributeDescriptions = VertexType::getAttributeDescriptions().data(); // Optional
             vertexInputState.flags = 0;
             vertexInputState.pNext = nullptr; 
