@@ -66,9 +66,19 @@ namespace Fox {
 				return pipelineLayout;
 			}
 
+			void SetName(const std::string& name) {
+				this->name = name;
+			}
+
+			inline std::string GetName() const {
+				return name;
+			}
+
 		private:
 			VkPipelineLayout pipelineLayout;
 			VkPipeline graphicsPipeline;
+
+			std::string name;
 
 			VkPipelineDynamicStateCreateInfo dynamicState;
 			VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
@@ -96,18 +106,23 @@ namespace Fox {
 				currentPipelineState = pipeline;
 			}
 
+			void SetCurrentPipelineState(const std::string& pipelineName) {
+				SetAsCurrentPipelineState(pipelineStates[pipelineName]);
+			}
+
 			inline VkPipelineLayout GetCurrentPipelineStateLayout() {
 				return currentPipelineState->GetPipelineLayout();
 			}
 
 			void Create();
+			std::vector<Fox::Vulkan::PipelineConfig> ReadPipelineConfigs(const std::string& path);
 
 			void CreateGraphicsPipelines();
 
 		private:
 
-			std::shared_ptr<GraphicsPipelineState> graphicsPipelineState;
 			std::shared_ptr<GraphicsPipelineState> currentPipelineState;
+			std::unordered_map<std::string, std::shared_ptr<Fox::Vulkan::GraphicsPipelineState>> pipelineStates;
 		};
 		
 	}

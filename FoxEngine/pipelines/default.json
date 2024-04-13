@@ -1,0 +1,16 @@
+{
+  "pipeline": "Default Pipeline",
+  "id": 0,
+  "numberOfShaderStages": 2,
+  "shaders": [
+    {
+      "type": "vertex",
+      "path": "shaders/vert.spv"
+
+    },
+    {
+      "type": "fragment",
+      "path": "shaders/frag.spv"
+    }
+  ]
+}

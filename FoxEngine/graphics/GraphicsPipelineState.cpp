@@ -67,7 +67,7 @@ namespace Fox {
 
         GraphicsPipelineState& GraphicsPipelineState::WithShader(const std::string& shaderPath, VkShaderStageFlagBits shaderStage) {
             Fox::Vulkan::Renderer* renderer = Fox::Vulkan::Renderer::GetRenderer();
-            auto shaderByteCode = Fox::Core::FileSystem::readBinaryFile(shaderPath);
+            auto shaderByteCode = Fox::Core::FileSystem::ReadBinaryFile(shaderPath);
             VkShaderModule shaderModule = renderer->CreateShaderModule(shaderByteCode);
 
             VkPipelineShaderStageCreateInfo shaderStageInfo{};
@@ -233,37 +233,73 @@ namespace Fox {
         }
 
 		GraphicsPipelineStateManager::~GraphicsPipelineStateManager() {
-            graphicsPipelineState = nullptr;
 		}
+
+        std::vector<Fox::Vulkan::PipelineConfig> GraphicsPipelineStateManager::ReadPipelineConfigs(const std::string& path) {
+            std::vector<Fox::Vulkan::PipelineConfig> pipelineConfigs;
+            std::string data = Fox::Core::FileSystem::ReadFile(path);
+            Fox::Core::Json::JSON json;
+            json.Parse(data);
+
+            Fox::Core::Json::JSONObject& root = json.Get<Fox::Core::Json::JSONObject>();
+            Fox::Core::Json::IntValue& numPipelines = root.Get<Fox::Core::Json::IntValue>("numberOfPipelines");
+            uint32_t numberOfPipelines = numPipelines.GetValue();
+
+            Fox::Core::Json::JSONValueArray& pipelinesArray = root.Get<Fox::Core::Json::JSONValueArray>("pipelines");
+
+            for (size_t i = 0u; i < numberOfPipelines; i++) {
+                Fox::Core::Json::JSONObject& pipelineData = pipelinesArray.Get<Fox::Core::Json::JSONObject>(i);
+                Fox::Core::Json::StringValue& pipelineType = pipelineData.Get<Fox::Core::Json::StringValue>("type");
+                Fox::Core::Json::StringValue& pipelinePath = pipelineData.Get<Fox::Core::Json::StringValue>("path");
+                Fox::Core::Json::StringValue& pipelineName = pipelineData.Get<Fox::Core::Json::StringValue>("name");
+
+
+                Fox::Vulkan::PipelineConfig config;
+                config.name = pipelineName.value;
+                config.ReadFromFile(pipelinePath.value);
+                pipelineConfigs.push_back(config);
+            }
+        
+            return pipelineConfigs;
+        }
+
 
         void GraphicsPipelineStateManager::CreateGraphicsPipelines() {
             Fox::Vulkan::Renderer* renderer = Fox::Vulkan::Renderer::GetRenderer();
+
+            std::vector<Fox::Vulkan::PipelineConfig> pipelineConfigs = ReadPipelineConfigs("pipelines/pipelines.json");
 
             std::vector<VkDynamicState> dynamicStates = {
                 VK_DYNAMIC_STATE_VIEWPORT,
                 VK_DYNAMIC_STATE_SCISSOR
             };
-
             float blendConstants[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-            graphicsPipelineState = std::make_shared<GraphicsPipelineState>();
+            for (size_t i = 0u; i < pipelineConfigs.size(); i++) {
+                std::string name = pipelineConfigs[i].name;
+                pipelineStates[name] = std::make_shared<GraphicsPipelineState>();
+                Fox::Vulkan::GraphicsPipelineState* currentPipeline = pipelineStates[name].get();
+                currentPipeline->SetName(name);
 
-            graphicsPipelineState->
-                WithShader("shaders/vert.spv", VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT).
-                WithShader("shaders/frag.spv", VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT).
-                WithDynamicState(dynamicStates).
-                WithInputAssembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE).
-                WithViewportState(0.0f, 0.0f, static_cast<float>(renderer->swapchain->GetExtent().width), static_cast<float>(renderer->swapchain->GetExtent().height),
-                    0.0f, 1.0f, 0, 0, renderer->swapchain->GetExtent()).
-                WithRasterizationState(VK_FALSE, VK_FALSE, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_FALSE, 0.0f, 0.0f, 0.0f).
-                WithMultisampling(VK_TRUE, renderer->GetConfig().msaaSamples, 1.0f, nullptr, VK_FALSE, VK_FALSE).
-                WithColorBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO,
-                    VK_BLEND_OP_ADD, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD).
-                WithColorBlending(VK_FALSE, VK_LOGIC_OP_COPY, 1, blendConstants).
-                WithDepthStencil(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, 0.0f, 1.0f, VK_FALSE, {}, {}).
-                Create<Fox::Vulkan::Vertex>();
+                for (size_t shaderIndex = 0u; shaderIndex < pipelineConfigs[i].shaders.size(); shaderIndex++) {
+                    *currentPipeline = currentPipeline->WithShader(pipelineConfigs[i].shaders[shaderIndex].path, Fox::Vulkan::ShaderConfig::ToVulkanShader(pipelineConfigs[i].shaders[shaderIndex].shaderType));
+                }
 
-            SetAsCurrentPipelineState(graphicsPipelineState);
+                currentPipeline->
+                    WithDynamicState(dynamicStates).
+                    WithInputAssembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE).
+                    WithViewportState(0.0f, 0.0f, static_cast<float>(renderer->swapchain->GetExtent().width), static_cast<float>(renderer->swapchain->GetExtent().height),
+                        0.0f, 1.0f, 0, 0, renderer->swapchain->GetExtent()).
+                    WithRasterizationState(VK_FALSE, VK_FALSE, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_FALSE, 0.0f, 0.0f, 0.0f).
+                    WithMultisampling(VK_TRUE, renderer->GetConfig().msaaSamples, 1.0f, nullptr, VK_FALSE, VK_FALSE).
+                    WithColorBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO,
+                        VK_BLEND_OP_ADD, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD).
+                    WithColorBlending(VK_FALSE, VK_LOGIC_OP_COPY, 1, blendConstants).
+                    WithDepthStencil(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, 0.0f, 1.0f, VK_FALSE, {}, {}).
+                    Create<Fox::Vulkan::Vertex>();
+            }
+
+            SetCurrentPipelineState("default");
 
         }
 	}

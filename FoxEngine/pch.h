@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <vector>
+#include <unordered_map>
 #include <optional>
 #include <set>
 #include <cstdint> 
@@ -79,6 +80,8 @@ namespace Fox {
 	}
 }
 
+#include "core/JSON.h"
+
 #include "graphics/RendererConfig.h"
 #include "graphics/Buffer.h"
 #include "graphics/Mesh.h"
@@ -92,6 +95,7 @@ namespace Fox {
 #include "graphics/SamplerManager.h"
 #include "graphics/DescriptorSetManager.h"
 #include "graphics/RenderPassManager.h"
+#include "graphics/PipelineConfig.h"
 #include "graphics/GraphicsPipelineState.h"
 #include "graphics/Renderer.h"
 

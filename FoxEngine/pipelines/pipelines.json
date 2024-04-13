@@ -1,0 +1,11 @@
+{
+  "name": "Pipelines List",
+  "numberOfPipelines": 1,
+  "pipelines": [
+    {
+      "name":  "default",
+      "type": "graphics",
+      "path": "pipelines/default.json"
+    }
+  ]
+}

@@ -152,12 +152,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="core\FileSystem.cpp" />
+    <ClCompile Include="core\JSON.cpp" />
+    <ClCompile Include="core\JSONObject.cpp" />
+    <ClCompile Include="core\JSONTypedValue.cpp" />
+    <ClCompile Include="core\JSONValue.cpp" />
+    <ClCompile Include="core\JSONValueArray.cpp" />
     <ClCompile Include="graphics\Buffer.cpp" />
     <ClCompile Include="graphics\ConstantBuffers.cpp" />
     <ClCompile Include="graphics\DescriptorSetManager.cpp" />
     <ClCompile Include="graphics\GraphicsPipelineState.cpp" />
     <ClCompile Include="graphics\Mesh.cpp" />
     <ClCompile Include="graphics\Model.cpp" />
+    <ClCompile Include="graphics\PipelineConfig.cpp" />
     <ClCompile Include="graphics\Renderer.cpp" />
     <ClCompile Include="graphics\RenderPassManager.cpp" />
     <ClCompile Include="graphics\SamplerManager.cpp" />
@@ -174,6 +180,12 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="core\JSON.h" />
+    <ClInclude Include="core\JSONObject.h" />
+    <ClInclude Include="core\JSONTypedValue.h" />
+    <ClInclude Include="core\JSONValue.h" />
+    <ClInclude Include="core\JSONValueArray.h" />
+    <ClInclude Include="graphics\PipelineConfig.h" />
     <ClInclude Include="graphics\Buffer.h" />
     <ClInclude Include="core\FileSystem.h" />
     <ClInclude Include="graphics\ConstantBuffers.h" />
