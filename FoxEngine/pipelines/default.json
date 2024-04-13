@@ -1,6 +1,5 @@
 {
   "pipeline": "Default Pipeline",
-  "id": 0,
   "numberOfShaderStages": 2,
   "shaders": [
     {
@@ -12,5 +11,14 @@
       "type": "fragment",
       "path": "shaders/frag.spv"
     }
-  ]
+  ],
+  "numberOfDynamicStates":  2,
+  "dynamicStates": [
+    "viewport",
+    "scissor"
+  ],
+  "inputAssembly": {
+    "primitiveTopology": "triangle",
+    "primitiveRestartEnable":  false
+  }
 }

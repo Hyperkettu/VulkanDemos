@@ -23,6 +23,15 @@ namespace Fox {
 				return VkShaderStageFlagBits::VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 			}
 		}
+
+		Fox::Vulkan::DynamicState PipelineConfig::GetDynamicState(const std::string& state) {
+			if (state == "viewport") {
+				return Fox::Vulkan::DynamicState::VIEWPORT;
+			} else if (state == "scissor") {
+				return Fox::Vulkan::DynamicState::SCISSOR;
+			}
+			return Fox::Vulkan::DynamicState::NUM_DYNAMIC_STATES;
+		}
 		
 		PipelineConfig::~PipelineConfig() {
 		}
@@ -45,6 +54,15 @@ namespace Fox {
 
 				shaders.push_back({ Fox::Vulkan::ShaderConfig::GetShaderType(shaderType.value), shaderPath.value });
 			}
+			Fox::Core::Json::IntValue& numDynamicStates = root.Get<Fox::Core::Json::IntValue>("numberOfDynamicStates");
+			uint32_t numberOfDynamicStates = numDynamicStates.GetValue();
+			Fox::Core::Json::JSONValueArray& dynamicStatesArray = root.Get<Fox::Core::Json::JSONValueArray>("dynamicStates");
+
+			for (size_t i = 0u; i < numberOfDynamicStates; i++) {
+				Fox::Core::Json::StringValue& dynamicState = dynamicStatesArray.Get<Fox::Core::Json::StringValue>(i);
+				dynamicStates.push_back(Fox::Vulkan::PipelineConfig::GetDynamicState(dynamicState.value));
+			}
+
 		}
 	}
 }

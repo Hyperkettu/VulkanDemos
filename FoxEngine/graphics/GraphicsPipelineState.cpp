@@ -269,10 +269,6 @@ namespace Fox {
 
             std::vector<Fox::Vulkan::PipelineConfig> pipelineConfigs = ReadPipelineConfigs("pipelines/pipelines.json");
 
-            std::vector<VkDynamicState> dynamicStates = {
-                VK_DYNAMIC_STATE_VIEWPORT,
-                VK_DYNAMIC_STATE_SCISSOR
-            };
             float blendConstants[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
             for (size_t i = 0u; i < pipelineConfigs.size(); i++) {
@@ -283,6 +279,15 @@ namespace Fox {
 
                 for (size_t shaderIndex = 0u; shaderIndex < pipelineConfigs[i].shaders.size(); shaderIndex++) {
                     *currentPipeline = currentPipeline->WithShader(pipelineConfigs[i].shaders[shaderIndex].path, Fox::Vulkan::ShaderConfig::ToVulkanShader(pipelineConfigs[i].shaders[shaderIndex].shaderType));
+                }
+
+                std::vector<VkDynamicState> dynamicStates;
+                for (size_t j = 0u; j < pipelineConfigs[i].dynamicStates.size(); j++) {
+                    if (pipelineConfigs[i].dynamicStates[j] == Fox::Vulkan::DynamicState::VIEWPORT) {
+                        dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+                    } else if (pipelineConfigs[i].dynamicStates[j] == Fox::Vulkan::DynamicState::SCISSOR)  {
+                        dynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR);
+                    }
                 }
 
                 currentPipeline->

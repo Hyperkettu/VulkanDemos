@@ -295,7 +295,7 @@ namespace Fox {
 
 					arrayEndIndex = file.find(']', 1u);
 
-					if (arrayEndIndex == std::string::npos) {
+					if (arrayEndIndex == std::string::npos || file.find("],") == 0u) {
 						break;
 					}
 
