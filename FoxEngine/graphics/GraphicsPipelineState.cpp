@@ -339,7 +339,7 @@ namespace Fox {
 
                 for (size_t shaderIndex = 0u; shaderIndex < pipelineConfigs[i].shaders.size(); shaderIndex++) {
                     if (pipelineConfigs[i].rasterizerDiscardEnable && pipelineConfigs[i].shaders[shaderIndex].shaderType == Fox::Vulkan::ShaderType::FRAGMENT) {
-                        std::cout << "Warning: RasterizerDiscard in enabled but pipelineConfig still has fragment shader set in json." << std::endl;
+                        std::cout << "Warning: RasterizerDiscard in enabled but pipelineConfig still has fragment shader set in json. Skipping fragment shader." << std::endl;
                         continue;
                     }
                     *currentPipeline = currentPipeline->WithShader(pipelineConfigs[i].shaders[shaderIndex].path, Fox::Vulkan::ShaderConfig::ToVulkanShader(pipelineConfigs[i].shaders[shaderIndex].shaderType));
@@ -365,6 +365,14 @@ namespace Fox {
                 VkCullModeFlagBits cullMode = Fox::Vulkan::GraphicsPipelineState::GetVulkanCullMode(pipelineConfigs[i].cullMode);
                 VkFrontFace frontFace = Fox::Vulkan::GraphicsPipelineState::GetVulkanFrontFace(pipelineConfigs[i].frontFace);
 
+                VkSampleCountFlagBits msaaSamples = Fox::Vulkan::PipelineConfig::ToVulkanMultiSamples(pipelineConfigs[i].msaaSamples);
+                if (static_cast<uint32_t>(msaaSamples) > static_cast<uint32_t>(renderer->GetConfig().msaaSamples)) {
+                    std::cout << "Warning: pipeline's config JSON has a higher value in MSAA sample count than hardware supports. Downgrading to max MSAA samples." << std::endl;
+                    msaaSamples = renderer->GetConfig().msaaSamples;
+                } 
+
+                // TODO MSAA 1 support for render passes as well, currently error if msaa is 1
+
                 currentPipeline->
                     WithDynamicState(dynamicStates). 
                     WithInputAssembly(primitiveTopology, pipelineConfigs[i].primitiveRestartEnable ? VK_TRUE : VK_FALSE).
@@ -372,7 +380,8 @@ namespace Fox {
                         0.0f, 1.0f, 0, 0, renderer->swapchain->GetExtent()).
                     WithRasterizationState(pipelineConfigs[i].depthClampEnable ? VK_TRUE : VK_FALSE, pipelineConfigs[i].rasterizerDiscardEnable ? VK_TRUE : VK_FALSE, polygonMode, lineWidth,
                         cullMode, frontFace, pipelineConfigs[i].depthBiasEnable ? VK_TRUE : VK_FALSE, pipelineConfigs[i].depthBiasConstantFactor, pipelineConfigs[i].depthBiasClamp, pipelineConfigs[i].depthBiasSlopeFactor).
-                    WithMultisampling(VK_TRUE, renderer->GetConfig().msaaSamples, 1.0f, nullptr, VK_FALSE, VK_FALSE).
+                    WithMultisampling(pipelineConfigs[i].sampleShadingEnable ? VK_TRUE : VK_FALSE, msaaSamples, pipelineConfigs[i].minSampleShading, nullptr, 
+                        pipelineConfigs[i].alphaToCoverageEnable ? VK_TRUE : VK_FALSE, pipelineConfigs[i].alphaToOneEnable ?  VK_TRUE : VK_FALSE).
                     WithColorBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO,
                         VK_BLEND_OP_ADD, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD).
                     WithColorBlending(VK_FALSE, VK_LOGIC_OP_COPY, 1, blendConstants).

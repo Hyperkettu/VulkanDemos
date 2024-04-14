@@ -31,6 +31,13 @@
     "depthBiasEnable": false,
     "depthBiasConstantFactor": 0.0,
     "depthBiasClamp": 0.0,
-    "depthBiasSlopeFactor":  0.0
+    "depthBiasSlopeFactor": 0.0
+  },
+  "multisampling": {
+    "sampleShadingEnable": true,
+    "msaaSamples": 8,
+    "minSampleShading": 1.0,
+    "alphaToCoverageEnable": false,
+    "alphaToOneEnable":  false
   }
 }

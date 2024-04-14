@@ -52,7 +52,7 @@ namespace Fox {
 
 			static Fox::Vulkan::ShaderType GetShaderType(std::string& type);
 			static VkShaderStageFlagBits ToVulkanShader(Fox::Vulkan::ShaderType type);
-			
+
 		};
 	
 		struct PipelineConfig {
@@ -66,23 +66,40 @@ namespace Fox {
 			static Fox::Vulkan::PolygonMode GetPolygonMode(const std::string& polygonMode);
 			static Fox::Vulkan::CullMode GetCullMode(const std::string& cullMode);
 			static Fox::Vulkan::FrontFace GetFrontFace(const std::string& frontFace);
+			static VkSampleCountFlagBits ToVulkanMultiSamples(uint32_t msaaSamples) {
+				return static_cast<VkSampleCountFlagBits>(msaaSamples);
+			}
 
 			std::string name;
+
+			// shaders stages
 			std::vector<Fox::Vulkan::ShaderConfig> shaders;
+
+			// dynamic states
 			std::vector<Fox::Vulkan::DynamicState> dynamicStates;
+
+			// input assmbly state
 			Fox::Vulkan::PrimitiveTopology topology;
 			bool primitiveRestartEnable;
+
+			// rasterization state
 			bool depthClampEnable;
 			bool rasterizerDiscardEnable;
 			Fox::Vulkan::PolygonMode polygonMode;
 			float lineWidth;
 			Fox::Vulkan::CullMode cullMode;
 			Fox::Vulkan::FrontFace frontFace;
-
 			bool depthBiasEnable;
 			float depthBiasConstantFactor;
 			float depthBiasClamp;
 			float depthBiasSlopeFactor;
+
+			// multisampling state
+			bool sampleShadingEnable;
+			uint32_t msaaSamples;
+			float minSampleShading;
+			bool alphaToCoverageEnable;
+			bool alphaToOneEnable;
 		};
 
 	}

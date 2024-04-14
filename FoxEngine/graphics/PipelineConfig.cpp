@@ -144,6 +144,19 @@ namespace Fox {
 			Fox::Core::Json::FloatValue& depthBiasSlopeFactorFloat = rasterization.Get<Fox::Core::Json::FloatValue>("depthBiasSlopeFactor");
 			depthBiasSlopeFactor = depthBiasSlopeFactorFloat.GetValue();
 
+			// multisampling
+			Fox::Core::Json::JSONObject& multisampling = root.Get<Fox::Core::Json::JSONObject>("multisampling");
+			Fox::Core::Json::BoolValue& sampleShadingEnableBool = multisampling.Get<Fox::Core::Json::BoolValue>("sampleShadingEnable");
+			sampleShadingEnable = sampleShadingEnableBool.GetValue();
+			Fox::Core::Json::IntValue& msaaSamplesInt = multisampling.Get<Fox::Core::Json::IntValue>("msaaSamples");
+			msaaSamples = msaaSamplesInt.GetValue();
+			Fox::Core::Json::FloatValue& minSampleShadingFloat = multisampling.Get<Fox::Core::Json::FloatValue>("minSampleShading");
+			minSampleShading = minSampleShadingFloat.GetValue();
+			Fox::Core::Json::BoolValue& alphaToCoverageEnableBool = multisampling.Get<Fox::Core::Json::BoolValue>("alphaToCoverageEnable");
+			alphaToCoverageEnable = alphaToCoverageEnableBool.GetValue();
+			Fox::Core::Json::BoolValue& alphaToOneEnableBool = multisampling.Get<Fox::Core::Json::BoolValue>("alphaToOneEnable");
+			alphaToOneEnable = alphaToOneEnableBool.GetValue();
+
 		}
 	}
 }
