@@ -202,6 +202,11 @@ namespace Fox {
 
             SetIndexBuffer(commandBuffer, model->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
             SetDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 0, 1, descriptorManager->GetAddressOfDescriptorSet(currentFrame));
+
+            if (graphicsPipelineState->RenderWideLines()) {
+                vkCmdSetLineWidth(commandBuffer, graphicsPipelineState->GetCurrentLineWidth());
+            }
+
             DrawIndexed(commandBuffer, static_cast<uint32_t>(model->GetIndexCount()), 1, 0, 0, 0);
 
             RenderPassEnd(commandBuffer);
@@ -451,6 +456,8 @@ namespace Fox {
             VkPhysicalDeviceFeatures deviceFeatures{};
             deviceFeatures.samplerAnisotropy = VK_TRUE;
             deviceFeatures.sampleRateShading = VK_TRUE; // enable sample shading feature for the device
+            deviceFeatures.fillModeNonSolid = VK_TRUE;
+            deviceFeatures.wideLines = VK_TRUE;
 
             VkDeviceCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

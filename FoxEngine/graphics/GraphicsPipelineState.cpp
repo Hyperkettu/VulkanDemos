@@ -252,6 +252,46 @@ namespace Fox {
             }
         }
 
+        VkPolygonMode GraphicsPipelineState::GetVulkanPolygonMode(Fox::Vulkan::PolygonMode polygonMode) {
+            switch (polygonMode)
+            {
+            case Fox::Vulkan::PolygonMode::FILL:
+                return VkPolygonMode::VK_POLYGON_MODE_FILL;
+            case Fox::Vulkan::PolygonMode::WIREFRAME:
+                return VkPolygonMode::VK_POLYGON_MODE_LINE;
+            case Fox::Vulkan::PolygonMode::POINT:
+                return VkPolygonMode::VK_POLYGON_MODE_POINT;
+            default:
+                return VkPolygonMode::VK_POLYGON_MODE_FILL;
+            }
+        }
+
+        VkCullModeFlagBits GraphicsPipelineState::GetVulkanCullMode(Fox::Vulkan::CullMode cullMode) {
+            switch (cullMode)
+            {
+            case Fox::Vulkan::FRONT:
+                return VkCullModeFlagBits::VK_CULL_MODE_FRONT_BIT;
+            case Fox::Vulkan::BACK:
+                return VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT;
+            case Fox::Vulkan::FRONT_AND_BACK:
+                return VkCullModeFlagBits::VK_CULL_MODE_FRONT_AND_BACK;
+            default:
+                return VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT;
+            }
+        }
+
+        VkFrontFace GraphicsPipelineState::GetVulkanFrontFace(Fox::Vulkan::FrontFace frontFace) {
+            switch (frontFace)
+            {
+            case Fox::Vulkan::CLOCKWISE:
+                return VkFrontFace::VK_FRONT_FACE_CLOCKWISE;
+            case Fox::Vulkan::COUNTER_CLOCKWISE:
+                return VkFrontFace::VK_FRONT_FACE_COUNTER_CLOCKWISE;
+            default:
+                return VkFrontFace::VK_FRONT_FACE_COUNTER_CLOCKWISE;
+            }
+        }
+
 		GraphicsPipelineStateManager::~GraphicsPipelineStateManager() {
 		}
 
@@ -295,8 +335,13 @@ namespace Fox {
                 pipelineStates[name] = std::make_shared<GraphicsPipelineState>();
                 Fox::Vulkan::GraphicsPipelineState* currentPipeline = pipelineStates[name].get();
                 currentPipeline->SetName(name);
+                currentPipeline->SetConfig(pipelineConfigs[i]);
 
                 for (size_t shaderIndex = 0u; shaderIndex < pipelineConfigs[i].shaders.size(); shaderIndex++) {
+                    if (pipelineConfigs[i].rasterizerDiscardEnable && pipelineConfigs[i].shaders[shaderIndex].shaderType == Fox::Vulkan::ShaderType::FRAGMENT) {
+                        std::cout << "Warning: RasterizerDiscard in enabled but pipelineConfig still has fragment shader set in json." << std::endl;
+                        continue;
+                    }
                     *currentPipeline = currentPipeline->WithShader(pipelineConfigs[i].shaders[shaderIndex].path, Fox::Vulkan::ShaderConfig::ToVulkanShader(pipelineConfigs[i].shaders[shaderIndex].shaderType));
                 }
 
@@ -304,19 +349,29 @@ namespace Fox {
                 for (size_t j = 0u; j < pipelineConfigs[i].dynamicStates.size(); j++) {
                     if (pipelineConfigs[i].dynamicStates[j] == Fox::Vulkan::DynamicState::VIEWPORT) {
                         dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-                    } else if (pipelineConfigs[i].dynamicStates[j] == Fox::Vulkan::DynamicState::SCISSOR)  {
+                    } else if (pipelineConfigs[i].dynamicStates[j] == Fox::Vulkan::DynamicState::SCISSOR) {
                         dynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR);
                     }
                 }
 
+                float lineWidth = pipelineConfigs[i].lineWidth;
+
+                if (lineWidth != 1.0f) {
+                    dynamicStates.push_back(VK_DYNAMIC_STATE_LINE_WIDTH);
+                }
+
                 VkPrimitiveTopology primitiveTopology = Fox::Vulkan::GraphicsPipelineState::GetVulkanPrimitiveTopology(pipelineConfigs[i].topology);
+                VkPolygonMode polygonMode = Fox::Vulkan::GraphicsPipelineState::GetVulkanPolygonMode(pipelineConfigs[i].polygonMode);
+                VkCullModeFlagBits cullMode = Fox::Vulkan::GraphicsPipelineState::GetVulkanCullMode(pipelineConfigs[i].cullMode);
+                VkFrontFace frontFace = Fox::Vulkan::GraphicsPipelineState::GetVulkanFrontFace(pipelineConfigs[i].frontFace);
 
                 currentPipeline->
                     WithDynamicState(dynamicStates). 
                     WithInputAssembly(primitiveTopology, pipelineConfigs[i].primitiveRestartEnable ? VK_TRUE : VK_FALSE).
                     WithViewportState(0.0f, 0.0f, static_cast<float>(renderer->swapchain->GetExtent().width), static_cast<float>(renderer->swapchain->GetExtent().height),
                         0.0f, 1.0f, 0, 0, renderer->swapchain->GetExtent()).
-                    WithRasterizationState(VK_FALSE, VK_FALSE, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_FALSE, 0.0f, 0.0f, 0.0f).
+                    WithRasterizationState(pipelineConfigs[i].depthClampEnable ? VK_TRUE : VK_FALSE, pipelineConfigs[i].rasterizerDiscardEnable ? VK_TRUE : VK_FALSE, polygonMode, lineWidth,
+                        cullMode, frontFace, pipelineConfigs[i].depthBiasEnable ? VK_TRUE : VK_FALSE, pipelineConfigs[i].depthBiasConstantFactor, pipelineConfigs[i].depthBiasClamp, pipelineConfigs[i].depthBiasSlopeFactor).
                     WithMultisampling(VK_TRUE, renderer->GetConfig().msaaSamples, 1.0f, nullptr, VK_FALSE, VK_FALSE).
                     WithColorBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO,
                         VK_BLEND_OP_ADD, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD).

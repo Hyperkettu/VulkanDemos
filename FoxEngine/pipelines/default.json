@@ -19,6 +19,18 @@
   ],
   "inputAssembly": {
     "primitiveTopology": "triangle",
-    "primitiveRestartEnable":  false
+    "primitiveRestartEnable": false
+  },
+  "rasterization": {
+    "depthClampEnable": false,
+    "rasterizerDiscardEnable": false,
+    "polygonMode": "fill",
+    "lineWidth": 1.0,
+    "cullMode": "back",
+    "frontFace": "counter_clockwise",
+    "depthBiasEnable": false,
+    "depthBiasConstantFactor": 0.0,
+    "depthBiasClamp": 0.0,
+    "depthBiasSlopeFactor":  0.0
   }
 }

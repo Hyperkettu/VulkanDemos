@@ -26,6 +26,26 @@ namespace Fox {
 			NUM_PRIMITIVE_TOPOLOGIES
 		};
 
+		enum PolygonMode {
+			FILL,
+			WIREFRAME,
+			POINT,
+			NUM_POLYGON_MODES
+		};
+
+		enum CullMode {
+			FRONT,
+			BACK,
+			FRONT_AND_BACK,
+			NUM_CULL_MODES
+		};
+
+		enum FrontFace {
+			CLOCKWISE,
+			COUNTER_CLOCKWISE,
+			NUM_FRONT_FACES
+		};
+
 		struct ShaderConfig {
 			ShaderType shaderType;
 			std::string path;
@@ -43,13 +63,26 @@ namespace Fox {
 			void ReadFromFile(const std::string& path);
 			static Fox::Vulkan::DynamicState GetDynamicState(const std::string& state);
 			static Fox::Vulkan::PrimitiveTopology GetPrimitiveTopology(const std::string& topology);
-
+			static Fox::Vulkan::PolygonMode GetPolygonMode(const std::string& polygonMode);
+			static Fox::Vulkan::CullMode GetCullMode(const std::string& cullMode);
+			static Fox::Vulkan::FrontFace GetFrontFace(const std::string& frontFace);
 
 			std::string name;
 			std::vector<Fox::Vulkan::ShaderConfig> shaders;
 			std::vector<Fox::Vulkan::DynamicState> dynamicStates;
 			Fox::Vulkan::PrimitiveTopology topology;
 			bool primitiveRestartEnable;
+			bool depthClampEnable;
+			bool rasterizerDiscardEnable;
+			Fox::Vulkan::PolygonMode polygonMode;
+			float lineWidth;
+			Fox::Vulkan::CullMode cullMode;
+			Fox::Vulkan::FrontFace frontFace;
+
+			bool depthBiasEnable;
+			float depthBiasConstantFactor;
+			float depthBiasClamp;
+			float depthBiasSlopeFactor;
 		};
 
 	}

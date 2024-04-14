@@ -49,6 +49,38 @@ namespace Fox {
 			}
 			return Fox::Vulkan::PrimitiveTopology::NUM_PRIMITIVE_TOPOLOGIES;
 		}
+
+		Fox::Vulkan::PolygonMode PipelineConfig::GetPolygonMode(const std::string& polygonMode) {
+			if (polygonMode == "fill") {
+				return Fox::Vulkan::PolygonMode::FILL;
+			} else if (polygonMode == "wireframe") {
+				return Fox::Vulkan::PolygonMode::WIREFRAME;
+			} else if (polygonMode == "point") {
+				return Fox::Vulkan::PolygonMode::POINT;
+			}
+
+			return Fox::Vulkan::PolygonMode::NUM_POLYGON_MODES;
+		}
+
+		Fox::Vulkan::CullMode PipelineConfig::GetCullMode(const std::string& cullMode) {
+			if (cullMode == "front") {
+				return Fox::Vulkan::CullMode::FRONT;
+			} else if (cullMode == "back") {
+				return Fox::Vulkan::CullMode::BACK;
+			} else if (cullMode == "front_and_back") {
+				return Fox::Vulkan::CullMode::FRONT_AND_BACK;
+			}
+			return Fox::Vulkan::CullMode::NUM_CULL_MODES;
+		}
+
+		Fox::Vulkan::FrontFace PipelineConfig::GetFrontFace(const std::string& cullMode) {
+			if (cullMode == "clockwise") {
+				return Fox::Vulkan::FrontFace::CLOCKWISE;
+			} else if (cullMode == "counter_clockwise") {
+				return Fox::Vulkan::FrontFace::COUNTER_CLOCKWISE;
+			}
+			return Fox::Vulkan::FrontFace::NUM_FRONT_FACES;
+		}
 		
 		PipelineConfig::~PipelineConfig() {
 		}
@@ -87,7 +119,30 @@ namespace Fox {
 			Fox::Core::Json::BoolValue& primitiveRestartEnableBool = inputAssemby.Get<Fox::Core::Json::BoolValue>("primitiveRestartEnable");
 			primitiveRestartEnable = primitiveRestartEnableBool.GetValue();
 			
+			Fox::Core::Json::JSONObject& rasterization = root.Get<Fox::Core::Json::JSONObject>("rasterization");
+			Fox::Core::Json::BoolValue& depthClampEnableBool = rasterization.Get<Fox::Core::Json::BoolValue>("depthClampEnable");
+			depthClampEnable = depthClampEnableBool.GetValue();
+			Fox::Core::Json::BoolValue& rasterizerDiscardEnableBool = rasterization.Get<Fox::Core::Json::BoolValue>("rasterizerDiscardEnable");
+			rasterizerDiscardEnable = rasterizerDiscardEnableBool.GetValue();
+			Fox::Core::Json::StringValue& polygonModeString = rasterization.Get<Fox::Core::Json::StringValue>("polygonMode");
+			polygonMode = Fox::Vulkan::PipelineConfig::GetPolygonMode(polygonModeString.value);
+			Fox::Core::Json::FloatValue& lineWidthFloat = rasterization.Get<Fox::Core::Json::FloatValue>("lineWidth");
+			lineWidth = lineWidthFloat.GetValue();
+			Fox::Core::Json::StringValue& cullModeString = rasterization.Get<Fox::Core::Json::StringValue>("cullMode");
+			cullMode = Fox::Vulkan::PipelineConfig::GetCullMode(cullModeString.value);
 
+			Fox::Core::Json::StringValue& frontFaceString = rasterization.Get<Fox::Core::Json::StringValue>("frontFace");
+			frontFace = Fox::Vulkan::PipelineConfig::GetFrontFace(frontFaceString.value);
+
+			Fox::Core::Json::BoolValue& depthBiasEnableBool = rasterization.Get<Fox::Core::Json::BoolValue>("depthBiasEnable");
+			depthBiasEnable = depthBiasEnableBool.GetValue();
+
+			Fox::Core::Json::FloatValue& depthBiasConstantFactorFloat = rasterization.Get<Fox::Core::Json::FloatValue>("depthBiasConstantFactor");
+			depthBiasConstantFactor = depthBiasConstantFactorFloat.GetValue();
+			Fox::Core::Json::FloatValue& depthBiasClampFloat = rasterization.Get<Fox::Core::Json::FloatValue>("depthBiasClamp");
+			depthBiasClamp = depthBiasClampFloat.GetValue();
+			Fox::Core::Json::FloatValue& depthBiasSlopeFactorFloat = rasterization.Get<Fox::Core::Json::FloatValue>("depthBiasSlopeFactor");
+			depthBiasSlopeFactor = depthBiasSlopeFactorFloat.GetValue();
 
 		}
 	}

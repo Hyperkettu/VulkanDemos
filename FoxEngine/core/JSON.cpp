@@ -139,6 +139,10 @@ namespace Fox {
 			}
 
 			bool JSON::ParseBoolValue(Fox::Core::Json::JSONObject* object, std::string& attributeName, size_t comma, size_t endOfObject, std::string& file) {
+				if (file.find("{") == 1u) {
+					return false;
+				}
+
 				std::string truthValue = "true";
 				size_t index = file.find(truthValue, 1u);
 				if (index > 0u && (index < comma && index < endOfObject)) {

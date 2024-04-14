@@ -74,7 +74,18 @@ namespace Fox {
 				return name;
 			}
 
+			inline void SetConfig(const Fox::Vulkan::PipelineConfig& config) {
+				this->config = config;
+			}
+
+			inline Fox::Vulkan::PipelineConfig& GetConfig() {
+				return config;
+			}
+
 			static VkPrimitiveTopology GetVulkanPrimitiveTopology(Fox::Vulkan::PrimitiveTopology topology);
+			static VkPolygonMode GetVulkanPolygonMode(Fox::Vulkan::PolygonMode polygonMode);
+			static VkCullModeFlagBits GetVulkanCullMode(Fox::Vulkan::CullMode cullMode);
+			static VkFrontFace GetVulkanFrontFace(Fox::Vulkan::FrontFace frontFace);
 
 		private:
 			VkPipelineLayout pipelineLayout;
@@ -93,6 +104,8 @@ namespace Fox {
 
 			std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 			std::vector<VkShaderModule> shaderModules;
+
+			Fox::Vulkan::PipelineConfig config;
 		};
 	
 		class GraphicsPipelineStateManager {
@@ -120,6 +133,15 @@ namespace Fox {
 			std::vector<Fox::Vulkan::PipelineConfig> ReadPipelineConfigs(const std::string& path);
 
 			void CreateGraphicsPipelines();
+
+			float GetCurrentLineWidth() {
+				return currentPipelineState->GetConfig().lineWidth;
+			}
+
+			bool RenderWideLines() {
+				return currentPipelineState->GetConfig().lineWidth != 1.0f && (currentPipelineState->GetConfig().topology == Fox::Vulkan::PrimitiveTopology::LINES ||
+					currentPipelineState->GetConfig().topology == Fox::Vulkan::PrimitiveTopology::LINE_STRIP);
+			}
 
 		private:
 
