@@ -74,6 +74,8 @@ namespace Fox {
 				return name;
 			}
 
+			static VkPrimitiveTopology GetVulkanPrimitiveTopology(Fox::Vulkan::PrimitiveTopology topology);
+
 		private:
 			VkPipelineLayout pipelineLayout;
 			VkPipeline graphicsPipeline;

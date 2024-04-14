@@ -232,6 +232,26 @@ namespace Fox {
             return *this;
         }
 
+        VkPrimitiveTopology GraphicsPipelineState::GetVulkanPrimitiveTopology(Fox::Vulkan::PrimitiveTopology topology) {
+            switch (topology)
+            {
+            case Fox::Vulkan::PrimitiveTopology::TRIANGLES:
+                return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;    
+            case Fox::Vulkan::PrimitiveTopology::TRIANGLE_STRIP:
+                    return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+            case Fox::Vulkan::PrimitiveTopology::TRIANGLE_FAN:
+                return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+            case Fox::Vulkan::PrimitiveTopology::LINES:
+                return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            case Fox::Vulkan::PrimitiveTopology::LINE_STRIP:
+                return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+            case Fox::Vulkan::PrimitiveTopology::POINTS:
+                return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            default:
+                return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            }
+        }
+
 		GraphicsPipelineStateManager::~GraphicsPipelineStateManager() {
 		}
 
@@ -252,7 +272,6 @@ namespace Fox {
                 Fox::Core::Json::StringValue& pipelineType = pipelineData.Get<Fox::Core::Json::StringValue>("type");
                 Fox::Core::Json::StringValue& pipelinePath = pipelineData.Get<Fox::Core::Json::StringValue>("path");
                 Fox::Core::Json::StringValue& pipelineName = pipelineData.Get<Fox::Core::Json::StringValue>("name");
-
 
                 Fox::Vulkan::PipelineConfig config;
                 config.name = pipelineName.value;
@@ -290,9 +309,11 @@ namespace Fox {
                     }
                 }
 
+                VkPrimitiveTopology primitiveTopology = Fox::Vulkan::GraphicsPipelineState::GetVulkanPrimitiveTopology(pipelineConfigs[i].topology);
+
                 currentPipeline->
-                    WithDynamicState(dynamicStates).
-                    WithInputAssembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE).
+                    WithDynamicState(dynamicStates). 
+                    WithInputAssembly(primitiveTopology, pipelineConfigs[i].primitiveRestartEnable ? VK_TRUE : VK_FALSE).
                     WithViewportState(0.0f, 0.0f, static_cast<float>(renderer->swapchain->GetExtent().width), static_cast<float>(renderer->swapchain->GetExtent().height),
                         0.0f, 1.0f, 0, 0, renderer->swapchain->GetExtent()).
                     WithRasterizationState(VK_FALSE, VK_FALSE, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_FALSE, 0.0f, 0.0f, 0.0f).

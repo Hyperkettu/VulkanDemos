@@ -32,6 +32,23 @@ namespace Fox {
 			}
 			return Fox::Vulkan::DynamicState::NUM_DYNAMIC_STATES;
 		}
+
+		Fox::Vulkan::PrimitiveTopology PipelineConfig::GetPrimitiveTopology(const std::string& topology) {
+			if (topology == "triangle") {
+				return Fox::Vulkan::PrimitiveTopology::TRIANGLES;
+			} else if (topology == "triangle_strip") {
+				return Fox::Vulkan::PrimitiveTopology::TRIANGLE_STRIP;
+			} else if (topology == "triangle_fan") {
+				return Fox::Vulkan::PrimitiveTopology::TRIANGLE_FAN;
+			} else if (topology == "line") {
+				return Fox::Vulkan::PrimitiveTopology::LINES;
+			} else if (topology == "line_strip") {
+				return Fox::Vulkan::PrimitiveTopology::LINE_STRIP;
+			} else if (topology == "points") {
+				return Fox::Vulkan::PrimitiveTopology::POINTS;
+			}
+			return Fox::Vulkan::PrimitiveTopology::NUM_PRIMITIVE_TOPOLOGIES;
+		}
 		
 		PipelineConfig::~PipelineConfig() {
 		}
@@ -62,6 +79,15 @@ namespace Fox {
 				Fox::Core::Json::StringValue& dynamicState = dynamicStatesArray.Get<Fox::Core::Json::StringValue>(i);
 				dynamicStates.push_back(Fox::Vulkan::PipelineConfig::GetDynamicState(dynamicState.value));
 			}
+
+			Fox::Core::Json::JSONObject& inputAssemby = root.Get<Fox::Core::Json::JSONObject>("inputAssembly");
+			Fox::Core::Json::StringValue& primitiveTopologyString = inputAssemby.Get<Fox::Core::Json::StringValue>("primitiveTopology");
+			topology = Fox::Vulkan::PipelineConfig::GetPrimitiveTopology(primitiveTopologyString.value);
+
+			Fox::Core::Json::BoolValue& primitiveRestartEnableBool = inputAssemby.Get<Fox::Core::Json::BoolValue>("primitiveRestartEnable");
+			primitiveRestartEnable = primitiveRestartEnableBool.GetValue();
+			
+
 
 		}
 	}
