@@ -38,6 +38,34 @@
     "msaaSamples": 8,
     "minSampleShading": 1.0,
     "alphaToCoverageEnable": false,
-    "alphaToOneEnable":  false
+    "alphaToOneEnable": false
+  },
+  "colorBlending": {
+    "numberOfColorBlendAttachments":  1,
+    "colorBlendAttachments": [
+      {
+        "colorWriteMask": [
+          "r",
+          "g",
+          "b",
+          "a"
+        ],
+        "blendEnable": false,
+        "srcColorBlendFactor": "one",
+        "dstColorBlendFactor": "zero",
+        "colorBlendOp": "add",
+        "srcAlphaBlendFactor": "one",
+        "dstAlphaBlendFactor": "zero",
+        "alphaBlendOp": "add"
+      }
+    ],
+    "logicOpEnable": false,
+    "logicOp":  "copy",
+    "blendConstants": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
   }
 }

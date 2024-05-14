@@ -189,20 +189,20 @@ namespace Fox {
         }
 
         GraphicsPipelineState& GraphicsPipelineState::WithColorBlending(
-          VkBool32 logicOpEnable, 
-          VkLogicOp logicOp, 
-          uint32_t attachmentCount,
-         float blendConstants[4]
+            VkBool32 logicOpEnable,
+            VkLogicOp logicOp,
+            uint32_t attachmentCount,
+            float blendConstants[4]
         ) {
             colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-            colorBlending.logicOpEnable = VK_FALSE;
-            colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
-            colorBlending.attachmentCount = 1;
+            colorBlending.logicOpEnable = logicOpEnable;
+            colorBlending.logicOp = logicOp; // Optional
+            colorBlending.attachmentCount = attachmentCount;
             colorBlending.pAttachments = &colorBlendAttachment;
-            colorBlending.blendConstants[0] = 0.0f; // Optional
-            colorBlending.blendConstants[1] = 0.0f; // Optional
-            colorBlending.blendConstants[2] = 0.0f; // Optional
-            colorBlending.blendConstants[3] = 0.0f; // Optional
+            colorBlending.blendConstants[0] = blendConstants[0]; // Optional
+            colorBlending.blendConstants[1] = blendConstants[1]; // Optional
+            colorBlending.blendConstants[2] = blendConstants[2]; // Optional
+            colorBlending.blendConstants[3] = blendConstants[3]; // Optional
 
             return *this;
         }
@@ -269,11 +269,11 @@ namespace Fox {
         VkCullModeFlagBits GraphicsPipelineState::GetVulkanCullMode(Fox::Vulkan::CullMode cullMode) {
             switch (cullMode)
             {
-            case Fox::Vulkan::FRONT:
+            case Fox::Vulkan::CullMode::FRONT:
                 return VkCullModeFlagBits::VK_CULL_MODE_FRONT_BIT;
-            case Fox::Vulkan::BACK:
+            case Fox::Vulkan::CullMode::BACK:
                 return VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT;
-            case Fox::Vulkan::FRONT_AND_BACK:
+            case Fox::Vulkan::CullMode::FRONT_AND_BACK:
                 return VkCullModeFlagBits::VK_CULL_MODE_FRONT_AND_BACK;
             default:
                 return VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT;
@@ -283,9 +283,9 @@ namespace Fox {
         VkFrontFace GraphicsPipelineState::GetVulkanFrontFace(Fox::Vulkan::FrontFace frontFace) {
             switch (frontFace)
             {
-            case Fox::Vulkan::CLOCKWISE:
+            case Fox::Vulkan::FrontFace::CLOCKWISE:
                 return VkFrontFace::VK_FRONT_FACE_CLOCKWISE;
-            case Fox::Vulkan::COUNTER_CLOCKWISE:
+            case Fox::Vulkan::FrontFace::COUNTER_CLOCKWISE:
                 return VkFrontFace::VK_FRONT_FACE_COUNTER_CLOCKWISE;
             default:
                 return VkFrontFace::VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -373,20 +373,50 @@ namespace Fox {
 
                 // TODO MSAA 1 support for render passes as well, currently error if msaa is 1
 
-                currentPipeline->
-                    WithDynamicState(dynamicStates). 
+                *currentPipeline = currentPipeline->
+                    WithDynamicState(dynamicStates).
                     WithInputAssembly(primitiveTopology, pipelineConfigs[i].primitiveRestartEnable ? VK_TRUE : VK_FALSE).
                     WithViewportState(0.0f, 0.0f, static_cast<float>(renderer->swapchain->GetExtent().width), static_cast<float>(renderer->swapchain->GetExtent().height),
                         0.0f, 1.0f, 0, 0, renderer->swapchain->GetExtent()).
                     WithRasterizationState(pipelineConfigs[i].depthClampEnable ? VK_TRUE : VK_FALSE, pipelineConfigs[i].rasterizerDiscardEnable ? VK_TRUE : VK_FALSE, polygonMode, lineWidth,
                         cullMode, frontFace, pipelineConfigs[i].depthBiasEnable ? VK_TRUE : VK_FALSE, pipelineConfigs[i].depthBiasConstantFactor, pipelineConfigs[i].depthBiasClamp, pipelineConfigs[i].depthBiasSlopeFactor).
-                    WithMultisampling(pipelineConfigs[i].sampleShadingEnable ? VK_TRUE : VK_FALSE, msaaSamples, pipelineConfigs[i].minSampleShading, nullptr, 
-                        pipelineConfigs[i].alphaToCoverageEnable ? VK_TRUE : VK_FALSE, pipelineConfigs[i].alphaToOneEnable ?  VK_TRUE : VK_FALSE).
-                    WithColorBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO,
-                        VK_BLEND_OP_ADD, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD).
-                    WithColorBlending(VK_FALSE, VK_LOGIC_OP_COPY, 1, blendConstants).
-                    WithDepthStencil(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, 0.0f, 1.0f, VK_FALSE, {}, {}).
-                    Create<Fox::Vulkan::Vertex>();
+                    WithMultisampling(pipelineConfigs[i].sampleShadingEnable ? VK_TRUE : VK_FALSE, msaaSamples, pipelineConfigs[i].minSampleShading, nullptr,
+                        pipelineConfigs[i].alphaToCoverageEnable ? VK_TRUE : VK_FALSE, pipelineConfigs[i].alphaToOneEnable ? VK_TRUE : VK_FALSE);
+
+                for (size_t blendAttachmentIndex = 0u; blendAttachmentIndex < pipelineConfigs[i].colorBlendAttachments.size(); blendAttachmentIndex++) {
+
+                    VkColorComponentFlags colorWriteMask = 0;
+                    if (pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].colorWriteMask.red) {
+                        colorWriteMask |= VkColorComponentFlagBits::VK_COLOR_COMPONENT_R_BIT;
+                    }
+                    if (pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].colorWriteMask.green) {
+                        colorWriteMask |= VkColorComponentFlagBits::VK_COLOR_COMPONENT_G_BIT;
+                    }
+                    if (pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].colorWriteMask.blue) {
+                        colorWriteMask |= VkColorComponentFlagBits::VK_COLOR_COMPONENT_B_BIT;
+                    }
+                    if (pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].colorWriteMask.alpha) {
+                        colorWriteMask |= VkColorComponentFlagBits::VK_COLOR_COMPONENT_A_BIT;
+                    }
+
+                    VkBlendFactor srcColorBlendFactor = Fox::Vulkan::GraphicsPipelineState::GetVulkanBlendFactor(pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].srcColorBlendFactor);
+                    VkBlendFactor dstColorBlendFactor = Fox::Vulkan::GraphicsPipelineState::GetVulkanBlendFactor(pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].dstColorBlendFactor);
+                    VkBlendOp colorBlendOp = Fox::Vulkan::GraphicsPipelineState::GetVulkanBlendOp(pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].colorBlendOp);
+
+                    VkBlendFactor srcAlphaBlendFactor = Fox::Vulkan::GraphicsPipelineState::GetVulkanBlendFactor(pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].srcAlphaBlendFactor);
+                    VkBlendFactor dstAlphaBlendFactor = Fox::Vulkan::GraphicsPipelineState::GetVulkanBlendFactor(pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].dstAlphaBlendFactor);
+                    VkBlendOp alphaBlendOp = Fox::Vulkan::GraphicsPipelineState::GetVulkanBlendOp(pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].alphaBlendOp);
+
+
+                    *currentPipeline = currentPipeline->WithColorBlendAttachment(colorWriteMask, pipelineConfigs[i].colorBlendAttachments[blendAttachmentIndex].blendEnable ? VK_TRUE : VK_FALSE, 
+                        srcColorBlendFactor, dstColorBlendFactor, colorBlendOp, srcAlphaBlendFactor, dstAlphaBlendFactor, alphaBlendOp);
+                }
+
+                VkLogicOp logicOp = Fox::Vulkan::GraphicsPipelineState::GetVulkanLogicOp(pipelineConfigs[i].logicOp);
+
+                currentPipeline->WithColorBlending(pipelineConfigs[i].logicOpEnable ? VK_TRUE : VK_FALSE, logicOp, pipelineConfigs[i].colorBlendAttachments.size(), pipelineConfigs[i].blendConstants).
+                WithDepthStencil(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, 0.0f, 1.0f, VK_FALSE, {}, {}).
+                Create<Fox::Vulkan::Vertex>();
             }
 
             SetCurrentPipelineState("default");

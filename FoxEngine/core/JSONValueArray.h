@@ -36,6 +36,10 @@ namespace Fox {
 					}
 				}
 
+				size_t Size() {
+					return values.size();
+				}
+
 				JSONValue& operator[](size_t index);
 
 				friend std::ostream& operator<<(std::ostream& outputStream, const Fox::Core::Json::JSONValueArray& object);

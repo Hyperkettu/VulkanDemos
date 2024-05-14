@@ -86,6 +86,15 @@ namespace Fox {
 			static VkPolygonMode GetVulkanPolygonMode(Fox::Vulkan::PolygonMode polygonMode);
 			static VkCullModeFlagBits GetVulkanCullMode(Fox::Vulkan::CullMode cullMode);
 			static VkFrontFace GetVulkanFrontFace(Fox::Vulkan::FrontFace frontFace);
+			static VkBlendFactor GetVulkanBlendFactor(Fox::Vulkan::BlendFactor blendFactor) {
+				return static_cast<VkBlendFactor>(blendFactor);
+			}
+			static VkBlendOp GetVulkanBlendOp(Fox::Vulkan::BlendOperation blendOp) {
+				return static_cast<VkBlendOp>(blendOp);
+			}
+			static VkLogicOp GetVulkanLogicOp(Fox::Vulkan::LogicOperation logicOp) {
+				return static_cast<VkLogicOp>(logicOp);
+			}
 
 		private:
 			VkPipelineLayout pipelineLayout;

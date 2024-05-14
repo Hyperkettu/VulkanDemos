@@ -280,6 +280,7 @@ namespace Fox {
 				size_t arrayEndIndex = file.find(']', 1u);
 				size_t commaIndex = file.find(',', 1u);
 				size_t cellStart = 2u;
+				size_t numberOfIteration = 0u;
 
 				if (arrayEndIndex == std::string::npos)
 					return false;
@@ -304,10 +305,27 @@ namespace Fox {
 					}
 
 					if (file.find(',') == 0u) {
-						continue;
+						// ADDED
+						numberOfIteration++;
+						if(numberOfIteration > 100) {
+							file = file.substr(1u);
+						} else {
+							continue;
+						}
 					}
 
 					commaIndex = file.find(',', 1u);
+					
+					// add 
+					if (file.find("\"") == 0u) {
+						cellStart = 0u;
+					}
+					
+					size_t pointIndex = file.find('.'); 
+					if (pointIndex > 0u && pointIndex < commaIndex && cellStart != 2u) {
+						cellStart = 0u;
+					}
+
 					indexData = file.substr(cellStart, commaIndex - cellStart);
 
 					file = file.substr(commaIndex);
