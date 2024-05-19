@@ -414,8 +414,35 @@ namespace Fox {
 
                 VkLogicOp logicOp = Fox::Vulkan::GraphicsPipelineState::GetVulkanLogicOp(pipelineConfigs[i].logicOp);
 
+                
+                VkStencilOpState frontState = {
+                    Fox::Vulkan::GraphicsPipelineState::GetVulkanStencilOp(pipelineConfigs[i].frontState.failOp),
+                    Fox::Vulkan::GraphicsPipelineState::GetVulkanStencilOp(pipelineConfigs[i].frontState.passOp),
+                    Fox::Vulkan::GraphicsPipelineState::GetVulkanStencilOp(pipelineConfigs[i].frontState.depthFailOp),
+                    Fox::Vulkan::GraphicsPipelineState::GetVulkanCompareOp(pipelineConfigs[i].frontState.compareOp),
+                    pipelineConfigs[i].frontState.compareMask,
+                    pipelineConfigs[i].frontState.writeMask,
+                    pipelineConfigs[i].frontState.reference
+                };
+
+                VkStencilOpState backState = {
+                    Fox::Vulkan::GraphicsPipelineState::GetVulkanStencilOp(pipelineConfigs[i].backState.failOp),
+                    Fox::Vulkan::GraphicsPipelineState::GetVulkanStencilOp(pipelineConfigs[i].backState.passOp),
+                    Fox::Vulkan::GraphicsPipelineState::GetVulkanStencilOp(pipelineConfigs[i].backState.depthFailOp),
+                    Fox::Vulkan::GraphicsPipelineState::GetVulkanCompareOp(pipelineConfigs[i].backState.compareOp),
+                    pipelineConfigs[i].backState.compareMask,
+                    pipelineConfigs[i].backState.writeMask,
+                    pipelineConfigs[i].backState.reference
+                };
+
                 currentPipeline->WithColorBlending(pipelineConfigs[i].logicOpEnable ? VK_TRUE : VK_FALSE, logicOp, pipelineConfigs[i].colorBlendAttachments.size(), pipelineConfigs[i].blendConstants).
-                WithDepthStencil(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, 0.0f, 1.0f, VK_FALSE, {}, {}).
+                WithDepthStencil(pipelineConfigs[i].depthTestEnable ? VK_TRUE : VK_FALSE,
+                    pipelineConfigs[i].depthWriteEnable ? VK_TRUE : VK_FALSE,
+                    Fox::Vulkan::GraphicsPipelineState::GetVulkanCompareOp(pipelineConfigs[i].depthCompareOp), 
+                    pipelineConfigs[i].depthBoundsTestEnable ? VK_TRUE : VK_FALSE, 
+                    pipelineConfigs[i].minDepthBounds, pipelineConfigs[i].maxDepthBounds,
+                    pipelineConfigs[i].stencilTestEnable ? VK_TRUE : VK_FALSE, 
+                    frontState, backState).
                 Create<Fox::Vulkan::Vertex>();
             }
 

@@ -41,7 +41,7 @@
     "alphaToOneEnable": false
   },
   "colorBlending": {
-    "numberOfColorBlendAttachments":  1,
+    "numberOfColorBlendAttachments": 1,
     "colorBlendAttachments": [
       {
         "colorWriteMask": [
@@ -60,12 +60,40 @@
       }
     ],
     "logicOpEnable": false,
-    "logicOp":  "copy",
+    "logicOp": "copy",
     "blendConstants": [
       0.0,
       0.0,
       0.0,
       0.0
     ]
+  },
+  "depthStencil": {
+    "depthTestEnable": true,
+    "depthWriteEnable": true,
+    "depthCompareOp": "less",
+    "depthBoundsTestEnable": false,
+    "minDepthBounds": 0.0,
+    "maxDepthBounds": 1.0,
+    "stencilTestEnable": false,
+    "frontState": {
+      "failOp": "keep",
+      "passOp": "keep",
+      "depthFailOp": "keep",
+      "compareOp": "never",
+      "compareMask": 0,
+      "writeMask": 0,
+      "reference":  0
+    },
+    "backState": {
+      "failOp": "keep",
+      "passOp": "keep",
+      "depthFailOp": "keep",
+      "compareOp": "never",
+      "compareMask": 0,
+      "writeMask": 0,
+      "reference": 0
+    }
+
   }
 }

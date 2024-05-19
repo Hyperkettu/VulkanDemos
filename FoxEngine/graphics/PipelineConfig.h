@@ -170,6 +170,40 @@ namespace Fox {
 			SET = 15,
 			MAX_LOGIC_OPERATIONS = 16
 		};
+
+		enum StencilOperation {
+			KEEP = 0,
+			ZERO_OP = 1,
+			REPLACE = 2,
+			INCREMENT_AND_CLAMP = 3,
+			DECREMENT_AND_CLAMP = 4,
+			INVERT_OP = 5,
+			INCREMENT_AND_WRAP = 6,
+			DECREMENT_AND_WRAP = 7,
+			NUM_STENCIL_OPERATIONS
+		};
+
+		enum CompareOperation {
+			NEVER = 0,
+			LESS = 1,
+			EQUAL = 2,
+			LESS_OR_EQUAL = 3,
+			GREATER = 4,
+			NOT_EQUAL = 5,
+			GREATER_OR_EQUAL = 6,
+			ALWAYS = 7,
+			NUM_COMPARE_OPERATIONS
+		};
+
+		struct StencilOperationState {
+			Fox::Vulkan::StencilOperation failOp;
+			Fox::Vulkan::StencilOperation passOp;
+			Fox::Vulkan::StencilOperation depthFailOp;
+			Fox::Vulkan::CompareOperation compareOp;
+			uint32_t compareMask;
+			uint32_t writeMask;
+			uint32_t reference;
+		};
 	
 		struct PipelineConfig {
 
@@ -189,6 +223,8 @@ namespace Fox {
 			static Fox::Vulkan::BlendFactor GetBlendFactor(const std::string& blendFactor);
 			static Fox::Vulkan::BlendOperation GetBlendOperation(const std::string& blendOp);
 			static Fox::Vulkan::LogicOperation GetLogicOperation(const std::string& logicOp);
+			static Fox::Vulkan::StencilOperation GetStencilOperation(const std::string& stencilOp);
+			static Fox::Vulkan::CompareOperation GetCompareOperation(const std::string& compareOp);
 
 			std::string name;
 
@@ -226,6 +262,18 @@ namespace Fox {
 			bool logicOpEnable;
 			Fox::Vulkan::LogicOperation logicOp;
 			float blendConstants[4];
+
+			// depth stencil
+			bool depthTestEnable;
+			bool depthWriteEnable;
+			Fox::Vulkan::CompareOperation depthCompareOp;
+		    bool depthBoundsTestEnable;
+			float minDepthBounds;
+			float maxDepthBounds;
+			bool stencilTestEnable;
+			Fox::Vulkan::StencilOperationState frontState;
+			Fox::Vulkan::StencilOperationState backState;
+
 		};
 
 	}

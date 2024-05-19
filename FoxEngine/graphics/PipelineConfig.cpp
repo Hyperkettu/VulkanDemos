@@ -286,6 +286,48 @@ namespace Fox {
 
 			return Fox::Vulkan::LogicOperation::MAX_LOGIC_OPERATIONS;
 		}
+
+		Fox::Vulkan::StencilOperation PipelineConfig::GetStencilOperation(const std::string& stencilOp) {
+			if (stencilOp == "keep") {
+				return Fox::Vulkan::StencilOperation::KEEP;
+			} else if (stencilOp == "zero") {
+				return Fox::Vulkan::StencilOperation::ZERO_OP;
+			} else if (stencilOp == "replace") {
+				return Fox::Vulkan::StencilOperation::REPLACE;
+			} else if (stencilOp == "increment_and_clamp") {
+				return Fox::Vulkan::StencilOperation::INCREMENT_AND_CLAMP;
+			} else if (stencilOp == "decrement_and_clamp") {
+				return Fox::Vulkan::StencilOperation::DECREMENT_AND_CLAMP;
+			} else if (stencilOp == "invert") {
+				return Fox::Vulkan::StencilOperation::INVERT_OP;
+			} else if (stencilOp == "increment_and_wrap") {
+				return Fox::Vulkan::StencilOperation::INCREMENT_AND_WRAP;
+			} else if (stencilOp == "decrement_and_wrap") {
+				return Fox::Vulkan::StencilOperation::DECREMENT_AND_WRAP;
+			}
+			return Fox::Vulkan::StencilOperation::NUM_STENCIL_OPERATIONS;
+		}
+
+		Fox::Vulkan::CompareOperation PipelineConfig::GetCompareOperation(const std::string& compareOp) {
+			if (compareOp == "never") {
+				return Fox::Vulkan::CompareOperation::NEVER;
+			} else if (compareOp == "less") {
+				return Fox::Vulkan::CompareOperation::LESS;
+			} else if (compareOp == "equal") {
+				return Fox::Vulkan::CompareOperation::EQUAL;
+			} else if (compareOp == "less_or_equal") {
+				return Fox::Vulkan::CompareOperation::LESS_OR_EQUAL;
+			} else if (compareOp == "greater") {
+				return Fox::Vulkan::CompareOperation::GREATER;
+			} else if (compareOp == "not_equal") {
+				return Fox::Vulkan::CompareOperation::NOT_EQUAL;
+			} else if (compareOp == "greater_or_equal") {
+				return Fox::Vulkan::CompareOperation::GREATER_OR_EQUAL;
+			} else if (compareOp == "always") {
+				return Fox::Vulkan::CompareOperation::ALWAYS;
+			}
+			return Fox::Vulkan::CompareOperation::NUM_COMPARE_OPERATIONS;
+		}
 		
 		PipelineConfig::~PipelineConfig() {
 		}
@@ -419,6 +461,65 @@ namespace Fox {
 				Fox::Core::Json::FloatValue blendConstantFloat = blendConstantsArray.Get<Fox::Core::Json::FloatValue>(i);
 				blendConstants[i] = blendConstantFloat.GetValue();
 			}
+
+			Fox::Core::Json::JSONObject& depthStencil = root.Get<Fox::Core::Json::JSONObject>("depthStencil");
+			Fox::Core::Json::BoolValue& depthTestEnableBool = depthStencil.Get<Fox::Core::Json::BoolValue>("depthTestEnable");
+			depthTestEnable = depthTestEnableBool.GetValue();
+			Fox::Core::Json::BoolValue& depthWriteEnableBool = depthStencil.Get<Fox::Core::Json::BoolValue>("depthWriteEnable");
+			depthWriteEnable = depthWriteEnableBool.GetValue();
+			Fox::Core::Json::StringValue& depthCompareOpString = depthStencil.Get<Fox::Core::Json::StringValue>("depthCompareOp");
+			depthCompareOp = Fox::Vulkan::PipelineConfig::GetCompareOperation(depthCompareOpString.value);
+			Fox::Core::Json::BoolValue& depthBoundsTestEnableBool = depthStencil.Get<Fox::Core::Json::BoolValue>("depthBoundsTestEnable");
+			depthBoundsTestEnable = depthBoundsTestEnableBool.GetValue();
+			Fox::Core::Json::FloatValue& minDepthBoundsFloat = depthStencil.Get<Fox::Core::Json::FloatValue>("minDepthBounds");
+			minDepthBounds = minDepthBoundsFloat.GetValue();
+			Fox::Core::Json::FloatValue& maxDepthBoundsFloat = depthStencil.Get<Fox::Core::Json::FloatValue>("maxDepthBounds");
+			maxDepthBounds = maxDepthBoundsFloat.GetValue();
+			Fox::Core::Json::BoolValue& stencilTestEnableBool = depthStencil.Get<Fox::Core::Json::BoolValue>("stencilTestEnable");
+			stencilTestEnable = stencilTestEnableBool.GetValue();
+
+			Fox::Core::Json::JSONObject& frontStateObject = depthStencil.Get<Fox::Core::Json::JSONObject>("frontState");
+			Fox::Core::Json::StringValue& frontFaceFailOpString = frontStateObject.Get<Fox::Core::Json::StringValue>("failOp");
+			Fox::Core::Json::StringValue& frontFacePassOpString = frontStateObject.Get<Fox::Core::Json::StringValue>("passOp");
+			Fox::Core::Json::StringValue& frontFaceDepthFailOpString = frontStateObject.Get<Fox::Core::Json::StringValue>("depthFailOp");
+			Fox::Core::Json::StringValue& frontFaceCompareOpString = frontStateObject.Get<Fox::Core::Json::StringValue>("compareOp");
+
+			Fox::Core::Json::IntValue& frontFaceCompareMaskInt = frontStateObject.Get<Fox::Core::Json::IntValue>("compareMask");
+			Fox::Core::Json::IntValue& frontFaceWriteMaskInt = frontStateObject.Get<Fox::Core::Json::IntValue>("writeMask");
+			Fox::Core::Json::IntValue& frontFaceReferenceInt = frontStateObject.Get<Fox::Core::Json::IntValue>("reference");
+
+
+			frontState = {
+				Fox::Vulkan::PipelineConfig::GetStencilOperation(frontFaceFailOpString.value),
+				Fox::Vulkan::PipelineConfig::GetStencilOperation(frontFacePassOpString.value),
+				Fox::Vulkan::PipelineConfig::GetStencilOperation(frontFaceDepthFailOpString.value),
+				Fox::Vulkan::PipelineConfig::GetCompareOperation(frontFaceCompareOpString.value),
+				static_cast<uint32_t>(frontFaceCompareMaskInt.GetValue()),
+				static_cast<uint32_t>(frontFaceWriteMaskInt.GetValue()),
+				static_cast<uint32_t>(frontFaceReferenceInt.GetValue())
+			};
+
+			Fox::Core::Json::JSONObject& backStateObject = depthStencil.Get<Fox::Core::Json::JSONObject>("backState");
+			Fox::Core::Json::StringValue& backFaceFailOpString = backStateObject.Get<Fox::Core::Json::StringValue>("failOp");
+			Fox::Core::Json::StringValue& backFacePassOpString = backStateObject.Get<Fox::Core::Json::StringValue>("passOp");
+			Fox::Core::Json::StringValue& backFaceDepthFailOpString = backStateObject.Get<Fox::Core::Json::StringValue>("depthFailOp");
+			Fox::Core::Json::StringValue& backFaceCompareOpString = backStateObject.Get<Fox::Core::Json::StringValue>("compareOp");
+
+			Fox::Core::Json::IntValue& backFaceCompareMaskInt = backStateObject.Get<Fox::Core::Json::IntValue>("compareMask");
+			Fox::Core::Json::IntValue& backFaceWriteMaskInt = backStateObject.Get<Fox::Core::Json::IntValue>("writeMask");
+			Fox::Core::Json::IntValue& backFaceReferenceInt = backStateObject.Get<Fox::Core::Json::IntValue>("reference");
+
+
+			backState = {
+				Fox::Vulkan::PipelineConfig::GetStencilOperation(backFaceFailOpString.value),
+				Fox::Vulkan::PipelineConfig::GetStencilOperation(backFacePassOpString.value),
+				Fox::Vulkan::PipelineConfig::GetStencilOperation(backFaceDepthFailOpString.value),
+				Fox::Vulkan::PipelineConfig::GetCompareOperation(backFaceCompareOpString.value),
+				static_cast<uint32_t>(backFaceCompareMaskInt.GetValue()),
+				static_cast<uint32_t>(backFaceWriteMaskInt.GetValue()),
+				static_cast<uint32_t>(backFaceReferenceInt.GetValue())
+			};
+
 		}
 	}
 }

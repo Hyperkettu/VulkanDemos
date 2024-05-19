@@ -95,6 +95,12 @@ namespace Fox {
 			static VkLogicOp GetVulkanLogicOp(Fox::Vulkan::LogicOperation logicOp) {
 				return static_cast<VkLogicOp>(logicOp);
 			}
+			static VkCompareOp GetVulkanCompareOp(Fox::Vulkan::CompareOperation compareOp) {
+				return static_cast<VkCompareOp>(compareOp);
+			}
+			static VkStencilOp GetVulkanStencilOp(Fox::Vulkan::StencilOperation stencilOp) {
+				return static_cast<VkStencilOp>(stencilOp);
+			}
 
 		private:
 			VkPipelineLayout pipelineLayout;
