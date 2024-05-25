@@ -520,6 +520,8 @@ namespace Fox {
 				static_cast<uint32_t>(backFaceReferenceInt.GetValue())
 			};
 
+			Fox::Core::Json::StringValue& vertexTypeString = root.Get<Fox::Core::Json::StringValue>("vertexType");
+			vertexType = vertexTypeString.value;
 		}
 	}
 }

@@ -83,7 +83,7 @@
       "compareOp": "never",
       "compareMask": 0,
       "writeMask": 0,
-      "reference":  0
+      "reference": 0
     },
     "backState": {
       "failOp": "keep",
@@ -94,6 +94,6 @@
       "writeMask": 0,
       "reference": 0
     }
-
-  }
+  },
+  "vertexType":  "Vertex"
 }

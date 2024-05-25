@@ -201,6 +201,7 @@
     <ClInclude Include="graphics\Synchronization.h" />
     <ClInclude Include="graphics\Texture.h" />
     <ClInclude Include="graphics\TextureManager.h" />
+    <ClInclude Include="graphics\Vertex.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

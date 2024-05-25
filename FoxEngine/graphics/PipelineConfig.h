@@ -274,6 +274,7 @@ namespace Fox {
 			Fox::Vulkan::StencilOperationState frontState;
 			Fox::Vulkan::StencilOperationState backState;
 
+			std::string vertexType;
 		};
 
 	}
