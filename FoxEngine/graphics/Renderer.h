@@ -16,6 +16,8 @@ namespace Fox {
 		class TextureManager;
 		class GraphicsPipelineStateManager;
 		class RenderPassManager;
+		class SceneGraph;
+		class SceneNode;
 
 		struct QueueFamilyIndices {
 			std::optional<uint32_t> graphicsFamily;
@@ -24,6 +26,11 @@ namespace Fox {
 			bool isComplete() {
 				return graphicsFamily.has_value() && presentFamily.has_value();
 			}
+		};
+
+		struct Batch {
+			Fox::Vulkan::Model* model;
+			glm::mat4 matrix;
 		};
 
 		template<class T>
@@ -159,7 +166,13 @@ namespace Fox {
 
 				VkSurfaceKHR surface;
 				VkInstance instance;
+				std::shared_ptr<Fox::Vulkan::SceneGraph> sceneGraph;
 
+				Fox::Vulkan::SceneNode* model;
+				float angle = 0.0f;
+
+
+				std::vector<Fox::Vulkan::Batch> batches;
 				
 		private:
 
@@ -226,8 +239,7 @@ namespace Fox {
 			std::unique_ptr<Fox::Vulkan::Swapchain> swapchain;
 			std::unique_ptr<Fox::Vulkan::Synchronization> synchronization;
 
-			std::shared_ptr<Fox::Vulkan::Model> model;
-
+	//		std::shared_ptr<Fox::Vulkan::Model> model;
 		};
 	}
 }

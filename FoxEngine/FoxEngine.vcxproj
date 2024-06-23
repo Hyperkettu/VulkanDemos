@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -163,10 +163,13 @@
     <ClCompile Include="graphics\GraphicsPipelineState.cpp" />
     <ClCompile Include="graphics\Mesh.cpp" />
     <ClCompile Include="graphics\Model.cpp" />
+    <ClCompile Include="graphics\ModelNode.cpp" />
     <ClCompile Include="graphics\PipelineConfig.cpp" />
     <ClCompile Include="graphics\Renderer.cpp" />
     <ClCompile Include="graphics\RenderPassManager.cpp" />
     <ClCompile Include="graphics\SamplerManager.cpp" />
+    <ClCompile Include="graphics\SceneGraph.cpp" />
+    <ClCompile Include="graphics\SceneNode.cpp" />
     <ClCompile Include="graphics\Swapchain.cpp" />
     <ClCompile Include="graphics\Synchronization.cpp" />
     <ClCompile Include="graphics\Texture.cpp" />
@@ -185,6 +188,7 @@
     <ClInclude Include="core\JSONTypedValue.h" />
     <ClInclude Include="core\JSONValue.h" />
     <ClInclude Include="core\JSONValueArray.h" />
+    <ClInclude Include="graphics\ModelNode.h" />
     <ClInclude Include="graphics\PipelineConfig.h" />
     <ClInclude Include="graphics\Buffer.h" />
     <ClInclude Include="core\FileSystem.h" />
@@ -197,6 +201,8 @@
     <ClInclude Include="graphics\RendererConfig.h" />
     <ClInclude Include="graphics\RenderPassManager.h" />
     <ClInclude Include="graphics\SamplerManager.h" />
+    <ClInclude Include="graphics\SceneGraph.h" />
+    <ClInclude Include="graphics\SceneNode.h" />
     <ClInclude Include="graphics\Swapchain.h" />
     <ClInclude Include="graphics\Synchronization.h" />
     <ClInclude Include="graphics\Texture.h" />

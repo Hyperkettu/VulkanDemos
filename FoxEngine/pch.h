@@ -15,6 +15,7 @@
 #include <chrono>
 #include <unordered_map>
 #include <random>
+#include <functional>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_Vulkan.h>
@@ -24,6 +25,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include <glm/glm.hpp>
+#include<glm/gtx/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -38,6 +40,10 @@ namespace Fox {
 			alignas(16) glm::mat4 view;
 			alignas(16) glm::mat4 proj;
 		};
+
+		struct PerObjectConstantBuffer {
+			alignas(16) glm::mat4 model;
+		};
 	}
 }
 
@@ -49,6 +55,9 @@ namespace Fox {
 #include "graphics/Mesh.h"
 #include "graphics/Texture.h"
 #include "graphics/Model.h"
+#include "graphics/SceneNode.h"
+#include "graphics/ModelNode.h"
+#include "graphics/SceneGraph.h"
 #include "graphics/Swapchain.h"
 #include "core/FileSystem.h"
 #include "graphics/Synchronization.h"

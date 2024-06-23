@@ -22,6 +22,16 @@ namespace Fox {
                 perFrame[i] = uniformBuffer;
 
             }
+
+            VkDeviceSize perObjectBufferSize = sizeof(Fox::Vulkan::PerObjectConstantBuffer);
+            perObject.resize(maxFramesInFlight);
+
+            for (size_t i = 0u; i < maxFramesInFlight; i++) {
+                Fox::Vulkan::Buffer<Fox::Vulkan::PerObjectConstantBuffer>* uniformBuffer = new Fox::Vulkan::Buffer<Fox::Vulkan::PerObjectConstantBuffer>();
+                uniformBuffer->Create(perObjectBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                uniformBuffer->Map();
+                perObject[i] = uniformBuffer;
+            }
         }
 		
 		void ConstantBuffers::SyncPerFrame(uint32_t currentImage) {
@@ -36,7 +46,7 @@ namespace Fox {
 
             Fox::Vulkan::PerFrameConstantBuffer perFrame{};
             perFrame.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-            perFrame.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            perFrame.view = glm::lookAt(glm::vec3(0.0f, -3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
             perFrame.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 10.0f);
             perFrame.proj[1][1] *= -1;
 
@@ -45,10 +55,21 @@ namespace Fox {
 
         }	
 
+        void ConstantBuffers::SyncPerObject(uint32_t currentFrame, const Batch& batch) {
+            Fox::Vulkan::PerObjectConstantBuffer perObject{};
+            perObject.model = batch.matrix;
+
+            this->perObject[currentFrame]->Update(perObject);
+        }
+
         void ConstantBuffers::DeleteBuffers() {
 
             for (size_t i = 0u; i < perFrame.size(); i++) {
                 delete perFrame[i];
+            }
+
+            for (size_t i = 0u; i < perObject.size(); i++) {
+                delete perObject[i];
             }
         }
 		

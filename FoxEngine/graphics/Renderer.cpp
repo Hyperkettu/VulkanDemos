@@ -8,12 +8,10 @@ namespace Fox {
 		Renderer* Renderer::rendererInstance = nullptr;
 	
 		Renderer::~Renderer() {
-		
 		}
 
         void Renderer::LoadModel() {
-            model = std::make_shared<Fox::Vulkan::Model>();
-            model->Load(MODEL_PATH);
+
         }
 
         void Renderer::CreateSDL2Surface(SDL_Window* window) {
@@ -54,7 +52,10 @@ namespace Fox {
             samplerManager = std::make_unique<Fox::Vulkan::SamplerManager>(mipLevels);
             samplerManager->CreateSamplers();
 
-            LoadModel();
+
+            sceneGraph = std::make_shared<Fox::Vulkan::SceneGraph>();
+            sceneGraph->AddChild("model", glm::vec3(0.0f, 0.0f, -1.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), MODEL_PATH);
+            model = sceneGraph->Find("model");
 
             constantBuffers = std::make_unique<Fox::Vulkan::ConstantBuffers>();
             constantBuffers->CreateUniformBuffers(MAX_FRAMES_IN_FLIGHT);
@@ -67,8 +68,6 @@ namespace Fox {
         }
 
         void Renderer::Destroy() {
-            model->~Model();
-            model = nullptr;
 
             constantBuffers = nullptr;
             swapchain->Cleanup();
@@ -82,6 +81,8 @@ namespace Fox {
 
             graphicsPipelineState = nullptr;
             renderPassManager = nullptr;
+            sceneGraph->Destroy();
+            sceneGraph = nullptr;
 
             vkDestroyDevice(device, nullptr);
 
@@ -114,6 +115,23 @@ namespace Fox {
             }
 
             synchronization->ResetFence(device, currentFrame);
+
+            angle += 0.05f;
+            model->SetRotation(0.0f, 0.0f, -angle);
+            model->SetPosition(angle * 0.001f, 0.0f, 0.0f);
+
+            sceneGraph->Update();
+
+
+            batches.clear();
+
+            sceneGraph->ForEach([=](std::shared_ptr<Fox::Vulkan::SceneNode> node) {
+                Fox::Vulkan::SceneNode* sceneNode = node.get();
+                Fox::Vulkan::ModelNode* modelNode = static_cast<Fox::Vulkan::ModelNode*>(sceneNode);
+                if (modelNode) {
+                    batches.push_back({ modelNode->GetModel(), modelNode->worldTransform });
+                }
+            });
 
             vkResetCommandBuffer(commandBuffers[currentFrame], 0);
             RecordCommandBuffer(commandBuffers[currentFrame], imageIndex);
@@ -195,19 +213,25 @@ namespace Fox {
             SetViewport(commandBuffer, 0.0f, 0.0f, static_cast<float>(swapchain->GetExtent().width), static_cast<float>(swapchain->GetExtent().height), 0.0f, 1.0f);
             SetScissor(commandBuffer, { 0, 0 }, swapchain->GetExtent());
 
-            VkDeviceSize offsets[] = { 0 };
-            std::vector<VkBuffer> vertexBuffers;
-            vertexBuffers.push_back(model->GetVertexBuffer());
-            SetVertexBuffers(commandBuffer, vertexBuffers, 0, offsets);
+            for (auto batch : batches) {
+                VkDeviceSize offsets[] = { 0 };
+                std::vector<VkBuffer> vertexBuffers;
+                vertexBuffers.push_back(batch.model->GetVertexBuffer());
+                SetVertexBuffers(commandBuffer, vertexBuffers, 0, offsets);
 
-            SetIndexBuffer(commandBuffer, model->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-            SetDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 0, 1, descriptorManager->GetAddressOfDescriptorSet(currentFrame));
+                SetIndexBuffer(commandBuffer, batch.model->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+                SetDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 0, 1, descriptorManager->GetAddressOfDescriptorSet(currentFrame));
 
-            if (graphicsPipelineState->RenderWideLines()) {
-                vkCmdSetLineWidth(commandBuffer, graphicsPipelineState->GetCurrentLineWidth());
+                if (graphicsPipelineState->RenderWideLines()) {
+                    vkCmdSetLineWidth(commandBuffer, graphicsPipelineState->GetCurrentLineWidth());
+                }
+
+                constantBuffers->SyncPerObject(currentFrame, batch);
+
+                DrawIndexed(commandBuffer, static_cast<uint32_t>(batch.model->GetIndexCount()), 1, 0, 0, 0);   
             }
 
-            DrawIndexed(commandBuffer, static_cast<uint32_t>(model->GetIndexCount()), 1, 0, 0, 0);
+            
 
             RenderPassEnd(commandBuffer);
             RenderEnd(commandBuffer);

@@ -30,7 +30,7 @@ namespace Fox {
             attachment.finalLayout = finalLayout;
 
             VkAttachmentReference attachmentRef{};
-            attachmentRef.attachment = attachments.size();
+            attachmentRef.attachment = static_cast<uint32_t>(attachments.size());
             attachmentRef.layout = finalLayout;
 
             attachments.push_back(attachment);
