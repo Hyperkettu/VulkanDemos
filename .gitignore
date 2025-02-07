@@ -8,6 +8,8 @@ ComputeShader/x64/
 
 HelloModel/x64/
 
+SimplePathTracer/x64/
+
 RaytracingInOneWeekend/
 
 *.tlog
