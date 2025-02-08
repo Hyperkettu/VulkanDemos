@@ -6,6 +6,9 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <TinyObjLoader/tiny_obj_loader.h>
 
+static const uint64_t render_width = 800;
+static const uint64_t render_height = 600;
+
 using CheckResultCallback = std::function<bool(VkResult, const char*, int32_t, const char*)>;
 CheckResultCallback g_checkResultCallback;
 
@@ -292,12 +295,30 @@ public:
       //  deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
         deviceExtensions.emplace_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
 
-       
-
         bool initialized = initVulkan();
         if (!initialized) {
             return;
         }
+
+        VkDeviceSize bufferSizeBytes = render_width * render_height * 3 * sizeof(float);
+        VkBufferCreateInfo bufferCreateInfo{ .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                            .size = bufferSizeBytes,
+                                            .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT };
+
+        buffer = createDedicatedBuffer(device, bufferCreateInfo,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+            | VK_MEMORY_PROPERTY_HOST_CACHED_BIT
+            | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        void* data = nullptr;
+        VkResult result = vkMapMemory(device, bufferMemory, 0, bufferSizeBytes, 0, &data);
+        assert(result == VK_SUCCESS);
+
+        float* fltData = reinterpret_cast<float*>(data);
+        LOG("First three elements: %f, %f, %f\n", fltData[0], fltData[1], fltData[2]);
+
+        vkUnmapMemory(device, bufferMemory);
+
         mainLoop();
         cleanup();
     }
@@ -451,6 +472,59 @@ private:
 
         return true;
     }
+
+    inline VkBuffer createDedicatedBuffer(VkDevice device, VkBufferCreateInfo info, VkMemoryPropertyFlags properties)
+    {
+        VkBuffer bufferTemp = VK_NULL_HANDLE;
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VkResult result = vkCreateBuffer(device, &info, nullptr, &bufferTemp);
+        assert(result == VK_SUCCESS);
+
+
+
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(device, bufferTemp, &memRequirements);
+
+        VkMemoryDedicatedAllocateInfo dedicatedInfo{ VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
+        VkMemoryAllocateInfo memAllocInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+        VkMemoryAllocateFlagsInfo     flagsInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO };
+        memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+
+        dedicatedInfo.pNext = memAllocInfo.pNext;
+        memAllocInfo.pNext = &dedicatedInfo;
+
+        dedicatedInfo.buffer = bufferTemp;
+        dedicatedInfo.image = nullptr;
+
+        flagsInfo.pNext = memAllocInfo.pNext;
+        memAllocInfo.pNext = &flagsInfo;
+
+        memAllocInfo.allocationSize = memRequirements.size;
+        memAllocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+        if (vkAllocateMemory(device, &memAllocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate buffer memory!");
+        }
+
+        vkBindBufferMemory(device, bufferTemp, bufferMemory, 0);
+
+        return bufferTemp;
+    }
+
+    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                return i;
+            }
+        }
+
+        throw std::runtime_error("Failed to find suitable memory type!");
+    }
+
 
     void initDebugUtils()
     {
@@ -1123,6 +1197,16 @@ private:
     }
 
     void cleanup() {
+
+        if (buffer) {
+            vkDestroyBuffer(device, buffer, nullptr);
+        }
+
+        if (bufferMemory) {
+            vkFreeMemory(device, bufferMemory, nullptr);
+        }
+
+
         if (device)
         {
             VK_CHECK(vkDeviceWaitIdle(device));
@@ -1200,6 +1284,10 @@ protected:
     PFN_vkCreateDebugUtilsMessengerEXT  createDebugUtilsMessengerEXT = nullptr;
     PFN_vkDestroyDebugUtilsMessengerEXT destroyDebugUtilsMessengerEXT = nullptr;
     VkDebugUtilsMessengerEXT            debugMessenger = nullptr;
+
+    // buffers
+    VkBuffer buffer;
+    VkDeviceMemory bufferMemory;
 
     bool disableRobustBufferAccess = true;
 
