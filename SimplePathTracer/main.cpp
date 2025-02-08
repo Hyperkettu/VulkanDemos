@@ -3,11 +3,16 @@
 //#define STB_IMAGE_IMPLEMENTATION
 //#include <STB_Image/stb_image.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <STB_Image/stb_image_write.h>
+
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <TinyObjLoader/tiny_obj_loader.h>
 
 static const uint64_t render_width = 800;
 static const uint64_t render_height = 600;
+static const uint32_t workgroup_width = 16;
+static const uint32_t workgroup_height = 8;
 
 using CheckResultCallback = std::function<bool(VkResult, const char*, int32_t, const char*)>;
 CheckResultCallback g_checkResultCallback;
@@ -319,6 +324,35 @@ public:
         VkCommandPool commandPool;
         VK_CHECK(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool));
 
+        // Shader loading and pipeline creation
+        VkShaderModule rayTraceModule = createShaderModule(readFile("shaders/raytrace.comp.spv"));
+
+        // Describes the entrypoint and the stage to use for this shader module in the pipeline
+        VkPipelineShaderStageCreateInfo shaderStageCreateInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                                                              .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+                                                              .module = rayTraceModule,
+                                                              .pName = "main" };
+
+        // For the moment, create an empty pipeline layout. You can ignore this code
+        // for now; we'll replace it in the next chapter.
+        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,  //
+                                                            .setLayoutCount = 0,                             //
+                                                            .pushConstantRangeCount = 0 };
+        VkPipelineLayout           pipelineLayout;
+        VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+
+        // Create the compute pipeline
+        VkComputePipelineCreateInfo pipelineCreateInfo{ .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,  //
+                                                       .stage = shaderStageCreateInfo,                           //
+                                                       .layout = pipelineLayout };
+        // Don't modify flags, basePipelineHandle, or basePipelineIndex
+        VkPipeline computePipeline;
+        VK_CHECK(vkCreateComputePipelines(device,                 // Device
+            VK_NULL_HANDLE,          // Pipeline cache (uses default)
+            1, &pipelineCreateInfo,  // Compute pipeline create info
+            nullptr,                 // Allocator (uses default)
+            &computePipeline));      // Output
+
         // Allocate a command buffer
         VkCommandBufferAllocateInfo commandBufferAllocInfo{ .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
                                                  .commandPool = commandPool,
@@ -332,16 +366,16 @@ public:
                                            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT };
         VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
-        // Fill the buffer
-        const float     fillValue = 0.5f;
-        const uint32_t& fillValueU32 = reinterpret_cast<const uint32_t&>(fillValue);
-        vkCmdFillBuffer(commandBuffer, buffer, 0, bufferSizeBytes, fillValueU32);
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+
+        // Run the compute shader with one workgroup for now
+        vkCmdDispatch(commandBuffer, 1, 1, 1);
 
         VkMemoryBarrier memoryBarrier{ .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
-                                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,  // Make transfer writes
+                                .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,  // Make transfer writes
                                 .dstAccessMask = VK_ACCESS_HOST_READ_BIT };      // Readable by the CPU
         vkCmdPipelineBarrier(commandBuffer,                                               // The command buffer
-            VK_PIPELINE_STAGE_TRANSFER_BIT,                          // From the transfer stage
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,                          // From the transfer stage
             VK_PIPELINE_STAGE_HOST_BIT,                              // To the CPU
             0,                                                       // No special flags
             1, &memoryBarrier,                                       // An array of memory barriers
@@ -351,8 +385,8 @@ public:
         VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
         // Submit the command buffer
-        VkSubmitInfo submitInfo{ .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,  //
-                                .commandBufferCount = 1,                              //
+        VkSubmitInfo submitInfo{ .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,  
+                                .commandBufferCount = 1,                              
                                 .pCommandBuffers = &commandBuffer };
         VK_CHECK(vkQueueSubmit(graphicsComputeTransferQueue.queue, 1, &submitInfo, VK_NULL_HANDLE));
 
@@ -364,9 +398,13 @@ public:
         assert(result == VK_SUCCESS);
 
         float* fltData = reinterpret_cast<float*>(data);
-        LOG("First three elements: %f, %f, %f\n", fltData[0], fltData[1], fltData[2]);
-
+        LOG("First three elements: %f, %f, %f\n", fltData[0], fltData[1], fltData[2]);       
+        stbi_write_hdr("output.hdr", render_width, render_height, 3, fltData);
         vkUnmapMemory(device, bufferMemory);
+
+        vkDestroyPipeline(device, computePipeline, nullptr);
+        vkDestroyShaderModule(device, rayTraceModule, nullptr);
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);  // Will be removed in the next chapter
 
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkDestroyCommandPool(device, commandPool, nullptr);
@@ -391,6 +429,18 @@ private:
         file.close();
 
         return buffer;
+    }
+
+    VkShaderModule createShaderModule(const std::vector<char>& code) {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create shader module!");
+        }
+        return shaderModule;
     }
 
     bool initVulkan() {

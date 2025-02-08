@@ -17,8 +17,8 @@
 #include <cassert>
 #include <functional>
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_Vulkan.h>
+//#include <SDL2/SDL.h>
+//#include <SDL2/SDL_Vulkan.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
@@ -31,6 +31,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
+
 
 
 
