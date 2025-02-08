@@ -310,6 +310,55 @@ public:
             | VK_MEMORY_PROPERTY_HOST_CACHED_BIT
             | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
+        VkCommandPoolCreateInfo commandPoolCreateInfo;
+        commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolCreateInfo.queueFamilyIndex = graphicsComputeTransferQueue.familyIndex;
+        commandPoolCreateInfo.pNext = nullptr;
+        commandPoolCreateInfo.flags = 0;
+        
+        VkCommandPool commandPool;
+        VK_CHECK(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool));
+
+        // Allocate a command buffer
+        VkCommandBufferAllocateInfo commandBufferAllocInfo{ .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                                                 .commandPool = commandPool,
+                                                 .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                                 .commandBufferCount = 1 };
+        VkCommandBuffer             commandBuffer;
+        VK_CHECK(vkAllocateCommandBuffers(device, &commandBufferAllocInfo, &commandBuffer));
+
+        // Begin recording
+        VkCommandBufferBeginInfo beginInfo{ .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                           .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT };
+        VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+        // Fill the buffer
+        const float     fillValue = 0.5f;
+        const uint32_t& fillValueU32 = reinterpret_cast<const uint32_t&>(fillValue);
+        vkCmdFillBuffer(commandBuffer, buffer, 0, bufferSizeBytes, fillValueU32);
+
+        VkMemoryBarrier memoryBarrier{ .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,  // Make transfer writes
+                                .dstAccessMask = VK_ACCESS_HOST_READ_BIT };      // Readable by the CPU
+        vkCmdPipelineBarrier(commandBuffer,                                               // The command buffer
+            VK_PIPELINE_STAGE_TRANSFER_BIT,                          // From the transfer stage
+            VK_PIPELINE_STAGE_HOST_BIT,                              // To the CPU
+            0,                                                       // No special flags
+            1, &memoryBarrier,                                       // An array of memory barriers
+            0, nullptr, 0, nullptr);                                 // No other barriers
+
+        // End recording
+        VK_CHECK(vkEndCommandBuffer(commandBuffer));
+
+        // Submit the command buffer
+        VkSubmitInfo submitInfo{ .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,  //
+                                .commandBufferCount = 1,                              //
+                                .pCommandBuffers = &commandBuffer };
+        VK_CHECK(vkQueueSubmit(graphicsComputeTransferQueue.queue, 1, &submitInfo, VK_NULL_HANDLE));
+
+        // Wait for the GPU to finish
+        VK_CHECK(vkQueueWaitIdle(graphicsComputeTransferQueue.queue));
+
         void* data = nullptr;
         VkResult result = vkMapMemory(device, bufferMemory, 0, bufferSizeBytes, 0, &data);
         assert(result == VK_SUCCESS);
@@ -318,6 +367,9 @@ public:
         LOG("First three elements: %f, %f, %f\n", fltData[0], fltData[1], fltData[2]);
 
         vkUnmapMemory(device, bufferMemory);
+
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkDestroyCommandPool(device, commandPool, nullptr);
 
         mainLoop();
         cleanup();
