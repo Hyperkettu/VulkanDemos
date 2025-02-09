@@ -315,6 +315,11 @@ public:
             | VK_MEMORY_PROPERTY_HOST_CACHED_BIT
             | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
+
+        createDescriptorSetLayout();
+        createDescriptorPool();
+        createDescriptorSets();
+
         VkCommandPoolCreateInfo commandPoolCreateInfo;
         commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         commandPoolCreateInfo.queueFamilyIndex = graphicsComputeTransferQueue.familyIndex;
@@ -335,11 +340,20 @@ public:
 
         // For the moment, create an empty pipeline layout. You can ignore this code
         // for now; we'll replace it in the next chapter.
-        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,  //
+        VkPipelineLayoutCreateInfo computePipelineLayoutCreateInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,  //
                                                             .setLayoutCount = 0,                             //
                                                             .pushConstantRangeCount = 0 };
-        VkPipelineLayout           pipelineLayout;
-        VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+        VkPipelineLayout           computePipelineLayout;
+
+        computePipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        computePipelineLayoutCreateInfo.setLayoutCount = 1;
+        computePipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+
+        if (vkCreatePipelineLayout(device, &computePipelineLayoutCreateInfo, nullptr, &computePipelineLayout) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create compute pipeline layout!");
+        }
+
+        VK_CHECK(vkCreatePipelineLayout(device, &computePipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
         // Create the compute pipeline
         VkComputePipelineCreateInfo pipelineCreateInfo{ .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,  //
@@ -368,8 +382,10 @@ public:
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1,
+            &descriptorSets[0], 0, nullptr);
         // Run the compute shader with one workgroup for now
-        vkCmdDispatch(commandBuffer, 1, 1, 1);
+        vkCmdDispatch(commandBuffer, render_width / workgroup_width, render_height / workgroup_height, 1);
 
         VkMemoryBarrier memoryBarrier{ .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
                                 .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,  // Make transfer writes
@@ -1318,7 +1334,6 @@ private:
         }
         if (destroyDebugUtilsMessengerEXT)
         {
-            // Destroy the Debug Utils Messenger
             destroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         }
 
@@ -1335,6 +1350,74 @@ private:
         createDebugUtilsMessengerEXT = nullptr;
         destroyDebugUtilsMessengerEXT = nullptr;
         debugMessenger = nullptr;
+    }
+
+    void createDescriptorPool() {
+
+        std::array<VkDescriptorPoolSize, 1> poolSizes{};
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        poolSizes[0].descriptorCount = static_cast<uint32_t>(1);
+
+        VkDescriptorPoolCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        info.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+        info.pPoolSizes = poolSizes.data();
+        info.maxSets = static_cast<uint32_t>(1);
+
+        if (vkCreateDescriptorPool(device, &info, nullptr, &descriptorPool) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create descriptor pool!");
+        }
+    }
+
+    void createDescriptorSets() {
+        std::vector<VkDescriptorSetLayout> computeLayouts(1, descriptorSetLayout);
+        VkDescriptorSetAllocateInfo computeAllocInfo{};
+        computeAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        computeAllocInfo.descriptorPool = descriptorPool;
+        computeAllocInfo.descriptorSetCount = static_cast<uint32_t>(1);
+        computeAllocInfo.pSetLayouts = computeLayouts.data();
+
+        descriptorSets.resize(1);
+        if (vkAllocateDescriptorSets(device, &computeAllocInfo, descriptorSets.data()) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate descriptor sets!");
+        }
+
+            std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
+            VkDescriptorBufferInfo storageBuffer{};
+            storageBuffer.buffer = buffer;
+            storageBuffer.offset = 0;
+            storageBuffer.range = sizeof(float) * 3 * render_width * render_height;
+
+            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[0].dstSet = descriptorSets[0];
+            descriptorWrites[0].dstBinding = 0;
+            descriptorWrites[0].dstArrayElement = 0;
+            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            descriptorWrites[0].descriptorCount = 1;
+            descriptorWrites[0].pBufferInfo = &storageBuffer;
+
+            vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+    }
+
+
+    void createDescriptorSetLayout() {
+        
+        std::array<VkDescriptorSetLayoutBinding, 1> computeLayoutBindings{};
+
+        computeLayoutBindings[0].binding = 0;
+        computeLayoutBindings[0].descriptorCount = 1;
+        computeLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        computeLayoutBindings[0].pImmutableSamplers = nullptr;
+        computeLayoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = static_cast<uint32_t>(computeLayoutBindings.size());
+        layoutInfo.pBindings = computeLayoutBindings.data();
+
+        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create descriptor set layout!");
+        }
     }
 
 protected:
@@ -1390,6 +1473,14 @@ protected:
     // buffers
     VkBuffer buffer;
     VkDeviceMemory bufferMemory;
+
+    // descriptors
+    VkDescriptorSetLayout        descriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorPool             descriptorPool = VK_NULL_HANDLE;
+    VkPipelineLayout             pipelineLayout = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> descriptorSets = {};
+
+    std::vector<VkDescriptorBindingFlags>     bindingFlags;
 
     bool disableRobustBufferAccess = true;
 
